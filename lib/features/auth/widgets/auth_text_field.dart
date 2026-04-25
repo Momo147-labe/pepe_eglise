@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
 
-class AuthTextField extends StatelessWidget {
+class AuthTextField extends StatefulWidget {
   final String label;
   final bool isPassword;
   final TextEditingController? controller;
@@ -14,6 +14,19 @@ class AuthTextField extends StatelessWidget {
   });
 
   @override
+  State<AuthTextField> createState() => _AuthTextFieldState();
+}
+
+class _AuthTextFieldState extends State<AuthTextField> {
+  late bool _obscureText;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.isPassword;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -21,9 +34,9 @@ class AuthTextField extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0, left: 4),
           child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
+            widget.label,
+            style: TextStyle(
+              color: context.subtitleColor,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -31,22 +44,41 @@ class AuthTextField extends StatelessWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.inputBackground,
+            color: context.surfaceHighlightColor.withOpacity(0.5),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.inputBorder),
+            border: Border.all(color: context.borderColor),
           ),
           child: TextField(
-            controller: controller,
-            obscureText: isPassword,
-            style: const TextStyle(color: Colors.white),
+            controller: widget.controller,
+            obscureText: _obscureText,
+            style: TextStyle(color: context.textColor),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,
               ),
               border: InputBorder.none,
-              hintText: label,
-              hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
+              hintText: widget.label,
+              hintStyle: TextStyle(
+                color: context.iconColor.withOpacity(0.5),
+                fontSize: 14,
+              ),
+              suffixIcon: widget.isPassword
+                  ? IconButton(
+                      icon: Icon(
+                        _obscureText
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: context.iconColor.withOpacity(0.5),
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                    )
+                  : null,
             ),
           ),
         ),

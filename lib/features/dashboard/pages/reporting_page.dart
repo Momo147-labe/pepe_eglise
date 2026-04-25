@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:eglise_labe/core/databases/database_helper.dart';
+import 'package:eglise_labe/core/services/reporting_pdf_service.dart';
 
 class ReportingPage extends StatefulWidget {
   const ReportingPage({super.key});
@@ -10,6 +12,55 @@ class ReportingPage extends StatefulWidget {
 }
 
 class _ReportingPageState extends State<ReportingPage> {
+  bool _isLoading = true;
+  int _totalMembers = 0;
+  double _memberGrowth = 0;
+  Map<String, int> _statusDistribution = {};
+  List<Map<String, dynamic>> _financialTrend = [];
+  double _totalIncome = 0;
+  double _totalExpenses = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final dbHelper = DatabaseHelper();
+    final memberDao = await dbHelper.memberDao;
+    final financeDao = await dbHelper.financeDao;
+
+    final currentYear = DateTime.now().year;
+    final total = await memberDao.getMemberCount();
+    final growthThisYear = await memberDao.getYearlyGrowth(currentYear);
+    final growthLastYear = await memberDao.getYearlyGrowth(currentYear - 1);
+
+    double growthPerc = 0;
+    if (growthLastYear > 0) {
+      growthPerc = ((growthThisYear - growthLastYear) / growthLastYear) * 100;
+    } else if (growthThisYear > 0) {
+      growthPerc = 100;
+    }
+
+    final distribution = await memberDao.getMemberStatusDistribution();
+    final trend = await financeDao.getYearlyTrend(currentYear);
+
+    double totalInc = await financeDao.getTotalIncome();
+    double totalExp = await financeDao.getTotalExpenses();
+
+    setState(() {
+      _totalMembers = total;
+      _memberGrowth = growthPerc;
+      _statusDistribution = distribution;
+      _financialTrend = trend;
+      _totalIncome = totalInc;
+      _totalExpenses = totalExp;
+      _isLoading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -46,12 +97,12 @@ class _ReportingPageState extends State<ReportingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Rapports & Statistiques",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A202C),
+                  color: context.textColor,
                   letterSpacing: -0.5,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -59,7 +110,7 @@ class _ReportingPageState extends State<ReportingPage> {
               const SizedBox(height: 4),
               Text(
                 "Analyses consolidées et rapports de performance culturelle",
-                style: const TextStyle(color: Colors.black45, fontSize: 16),
+                style: TextStyle(color: context.subtitleColor, fontSize: 16),
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -71,14 +122,24 @@ class _ReportingPageState extends State<ReportingPage> {
               icon: Icons.date_range_rounded,
               label: "Année 2024",
               onTap: () {},
-              color: Colors.white,
-              textColor: AppColors.backgroundDark,
+              color: context.surfaceColor,
+              textColor: context.textColor,
             ),
             const SizedBox(width: 16),
             _buildHeaderAction(
               icon: Icons.picture_as_pdf_rounded,
               label: "Rapport Annuel PDF",
-              onTap: () {},
+              onTap: () {
+                if (_isLoading) return;
+                ReportingPdfService().generateAnnualReport(
+                  totalMembers: _totalMembers,
+                  memberGrowth: _memberGrowth,
+                  statusDistribution: _statusDistribution,
+                  financialTrend: _financialTrend,
+                  totalIncome: _totalIncome,
+                  totalExpenses: _totalExpenses,
+                );
+              },
               color: AppColors.primaryOrange,
               textColor: Colors.white,
             ),
@@ -105,11 +166,11 @@ class _ReportingPageState extends State<ReportingPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: color == Colors.white
-              ? BorderSide(color: Colors.black.withOpacity(0.1))
+          side: color == context.surfaceColor
+              ? BorderSide(color: context.borderColor)
               : BorderSide.none,
         ),
-        elevation: color == Colors.white ? 0 : 4,
+        elevation: color == context.surfaceColor ? 0 : 4,
       ),
     );
   }
@@ -119,33 +180,32 @@ class _ReportingPageState extends State<ReportingPage> {
       children: [
         _buildStatCard(
           "Croissance Membres",
-          "+15.4%",
-          "vs Année dernière",
+          _isLoading ? "..." : "${_memberGrowth.toStringAsFixed(1)}%",
+          "Année ${DateTime.now().year}",
           Icons.trending_up_rounded,
           Colors.green,
         ),
-        const SizedBox(width: 24),
         _buildStatCard(
-          "Fidélité Moyenne",
-          "78%",
-          "Présence régulière",
-          Icons.favorite_rounded,
-          Colors.red,
-        ),
-        const SizedBox(width: 24),
-        _buildStatCard(
-          "Santé Financière",
-          "Excellent",
-          "Budget vs Réel",
-          Icons.health_and_safety_rounded,
+          "Membres Totaux",
+          _isLoading ? "..." : _totalMembers.toString(),
+          "Inscrits en base",
+          Icons.people_alt_rounded,
           Colors.blue,
         ),
-        const SizedBox(width: 24),
         _buildStatCard(
-          "Impact Diversité",
-          "Moderate",
-          "Groupes actifs",
-          Icons.auto_graph_rounded,
+          "Santé Financière",
+          _isLoading
+              ? "..."
+              : (_totalIncome > _totalExpenses ? "Excellent" : "Critique"),
+          "Budget vs Réel",
+          Icons.health_and_safety_rounded,
+          (_totalIncome > _totalExpenses ? Colors.green : Colors.red),
+        ),
+        _buildStatCard(
+          "Taux de Complétion",
+          "100%",
+          "Données à jour",
+          Icons.verified_user_rounded,
           Colors.purple,
         ),
       ],
@@ -163,16 +223,9 @@ class _ReportingPageState extends State<ReportingPage> {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.surfaceColor,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-          border: Border.all(color: Colors.black.withOpacity(0.05)),
+          border: Border.all(color: context.borderColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,17 +241,17 @@ class _ReportingPageState extends State<ReportingPage> {
             const SizedBox(height: 20),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A202C),
+                color: context.textColor,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.black45,
+              style: TextStyle(
+                color: context.subtitleColor,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -222,9 +275,9 @@ class _ReportingPageState extends State<ReportingPage> {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: context.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,21 +289,21 @@ class _ReportingPageState extends State<ReportingPage> {
           const SizedBox(height: 24),
           _buildSummaryItem(
             "Membres",
-            "La base de données compte désormais plus de 1,200 membres actifs, avec une forte croissance chez les jeunes (+25%).",
+            "La base de données compte désormais ${_totalMembers} membres actifs. La croissance cette année est estimée à ${_memberGrowth.toStringAsFixed(1)}%.",
             Icons.people_alt_rounded,
             Colors.blue,
           ),
           const Divider(height: 32),
           _buildSummaryItem(
             "Finances",
-            "Les contributions mensuelles sont en hausse de 12%. Les dépenses de construction du bâtiment sont sous contrôle.",
+            "Le solde global est de ${(_totalIncome - _totalExpenses).toInt()} GNF. Les revenus totaux s'élèvent à ${_totalIncome.toInt()} GNF.",
             Icons.account_balance_wallet_rounded,
             Colors.green,
           ),
           const Divider(height: 32),
           _buildSummaryItem(
-            "Activités",
-            "Le taux de participation aux activités hebdomadaires a augmenté grâce à la nouvelle application de gestion.",
+            "Analyse",
+            "Les rapports consolidés indiquent une stabilité opérationnelle positive pour l'année en cours.",
             Icons.assignment_rounded,
             Colors.orange,
           ),
@@ -291,7 +344,7 @@ class _ReportingPageState extends State<ReportingPage> {
               const SizedBox(height: 4),
               Text(
                 content,
-                style: const TextStyle(color: Colors.black54, height: 1.5),
+                style: TextStyle(color: context.subtitleColor, height: 1.5),
               ),
             ],
           ),
@@ -304,9 +357,9 @@ class _ReportingPageState extends State<ReportingPage> {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: context.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,54 +371,33 @@ class _ReportingPageState extends State<ReportingPage> {
           const SizedBox(height: 32),
           SizedBox(
             height: 200,
-            child: PieChart(
-              PieChartData(
-                sections: [
-                  PieChartSectionData(
-                    color: Colors.blue,
-                    value: 45,
-                    title: '45%',
-                    radius: 50,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+            child: _isLoading || _statusDistribution.isEmpty
+                ? const Center(child: Text("Pas de données"))
+                : PieChart(
+                    PieChartData(
+                      sections: _statusDistribution.entries.map((entry) {
+                        final colorMap = {
+                          'Actif': Colors.blue,
+                          'Nouveau': Colors.green,
+                          'Visiteur': Colors.orange,
+                          'Inactif': Colors.red,
+                        };
+                        return PieChartSectionData(
+                          color: colorMap[entry.key] ?? Colors.grey,
+                          value: entry.value.toDouble(),
+                          title: '${entry.value}',
+                          radius: 50,
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        );
+                      }).toList(),
+                      centerSpaceRadius: 40,
+                      sectionsSpace: 2,
                     ),
                   ),
-                  PieChartSectionData(
-                    color: Colors.green,
-                    value: 30,
-                    title: '30%',
-                    radius: 50,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  PieChartSectionData(
-                    color: Colors.orange,
-                    value: 15,
-                    title: '15%',
-                    radius: 50,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  PieChartSectionData(
-                    color: Colors.red,
-                    value: 10,
-                    title: '10%',
-                    radius: 50,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-                centerSpaceRadius: 40,
-                sectionsSpace: 2,
-              ),
-            ),
           ),
           const SizedBox(height: 24),
           _buildChartLegend("Actifs", Colors.blue),
@@ -390,7 +422,7 @@ class _ReportingPageState extends State<ReportingPage> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(color: Colors.black54, fontSize: 13),
+            style: TextStyle(color: context.subtitleColor, fontSize: 13),
           ),
         ],
       ),
@@ -401,9 +433,9 @@ class _ReportingPageState extends State<ReportingPage> {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: context.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,101 +447,101 @@ class _ReportingPageState extends State<ReportingPage> {
           const SizedBox(height: 48),
           SizedBox(
             height: 300,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 2000000,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.black.withOpacity(0.05),
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 60,
-                      getTitlesWidget: (val, meta) => Text(
-                        "${(val / 1000000).toInt()}M",
-                        style: const TextStyle(
-                          color: Colors.black26,
-                          fontSize: 10,
+            child: _isLoading || _financialTrend.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: 5000000,
+                        getDrawingHorizontalLine: (value) =>
+                            FlLine(color: context.borderColor, strokeWidth: 1),
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 60,
+                            getTitlesWidget: (val, meta) => Text(
+                              "${(val / 1000000).toInt()}M",
+                              style: TextStyle(
+                                color: context.iconColor,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (val, meta) {
+                              const months = [
+                                'Jan',
+                                'Fev',
+                                'Mar',
+                                'Avr',
+                                'Mai',
+                                'Jun',
+                                'Jul',
+                                'Aou',
+                                'Sep',
+                                'Oct',
+                                'Nov',
+                                'Dec',
+                              ];
+                              int idx = val.toInt();
+                              if (idx >= 0 && idx < months.length) {
+                                return Text(
+                                  months[idx],
+                                  style: TextStyle(
+                                    color: context.iconColor,
+                                    fontSize: 10,
+                                  ),
+                                );
+                              }
+                              return const Text("");
+                            },
+                          ),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
                         ),
                       ),
+                      borderData: FlBorderData(show: false),
+                      lineBarsData: [
+                        LineChartBarData(
+                          isCurved: true,
+                          color: AppColors.primaryOrange,
+                          barWidth: 4,
+                          isStrokeCapRound: true,
+                          dotData: const FlDotData(show: false),
+                          spots: _financialTrend.map((e) {
+                            return FlSpot(
+                              (e['month'] - 1).toDouble(),
+                              e['income'] as double,
+                            );
+                          }).toList(),
+                        ),
+                        LineChartBarData(
+                          isCurved: true,
+                          color: context.iconColor.withOpacity(0.2),
+                          barWidth: 2,
+                          dashArray: [5, 5],
+                          dotData: const FlDotData(show: false),
+                          spots: _financialTrend.map((e) {
+                            return FlSpot(
+                              (e['month'] - 1).toDouble(),
+                              e['expense'] as double,
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
                   ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (val, meta) {
-                        const months = [
-                          'Jan',
-                          'Fev',
-                          'Mar',
-                          'Avr',
-                          'Mai',
-                          'Jun',
-                        ];
-                        if (val.toInt() < months.length)
-                          return Text(
-                            months[val.toInt()],
-                            style: const TextStyle(
-                              color: Colors.black26,
-                              fontSize: 10,
-                            ),
-                          );
-                        return const Text("");
-                      },
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: true,
-                    color: AppColors.primaryOrange,
-                    barWidth: 4,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppColors.primaryOrange.withOpacity(0.1),
-                    ),
-                    spots: const [
-                      FlSpot(0, 3500000),
-                      FlSpot(1, 4200000),
-                      FlSpot(2, 3800000),
-                      FlSpot(3, 5000000),
-                      FlSpot(4, 5500000),
-                      FlSpot(5, 6200000),
-                    ],
-                  ),
-                  LineChartBarData(
-                    isCurved: true,
-                    color: Colors.black12,
-                    barWidth: 2,
-                    dashArray: [5, 5],
-                    dotData: const FlDotData(show: false),
-                    spots: const [
-                      FlSpot(0, 3000000),
-                      FlSpot(1, 3100000),
-                      FlSpot(2, 3500000),
-                      FlSpot(3, 3200000),
-                      FlSpot(4, 4000000),
-                      FlSpot(5, 4200000),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -573,19 +605,19 @@ class _ReportingPageState extends State<ReportingPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: context.borderColor),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.backgroundDark.withOpacity(0.05),
+              color: context.surfaceHighlightColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppColors.backgroundDark, size: 24),
+            child: Icon(icon, color: context.textColor, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -602,7 +634,7 @@ class _ReportingPageState extends State<ReportingPage> {
                 ),
                 Text(
                   sub,
-                  style: const TextStyle(color: Colors.black45, fontSize: 12),
+                  style: TextStyle(color: context.subtitleColor, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

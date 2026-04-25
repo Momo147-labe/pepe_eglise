@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:eglise_labe/core/constants/colors.dart';
 
 class ChartCard extends StatelessWidget {
   final String title;
@@ -21,15 +22,8 @@ class ChartCard extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,19 +31,19 @@ class ChartCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D3748),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: context.textColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(
-                Icons.more_vert_rounded,
-                color: Colors.black26,
-                size: 20,
-              ),
+              const SizedBox(width: 8),
+              Icon(Icons.more_vert_rounded, color: context.iconColor, size: 20),
             ],
           ),
           const SizedBox(height: 24),

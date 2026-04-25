@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
+import 'package:eglise_labe/core/databases/database_helper.dart';
+import 'package:eglise_labe/core/models/church_model.dart';
+import 'package:eglise_labe/core/models/user_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:eglise_labe/main.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -9,12 +14,71 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _notificationsEnabled = true;
-  bool _darkMode = false;
   String _selectedLanguage = "Français";
+
+  bool _isLoading = true;
+  ChurchModel? _churchProfile;
+  List<UserModel> _admins = [];
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _addressController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final churchDao = await DatabaseHelper().churchDao;
+    _churchProfile = await churchDao.getChurchProfile();
+
+    if (_churchProfile != null) {
+      _nameController.text = _churchProfile!.name;
+      _addressController.text = _churchProfile!.address;
+      _emailController.text = _churchProfile!.email;
+      _phoneController.text = _churchProfile!.phone;
+    }
+
+    final userDao = await DatabaseHelper().userDao;
+    _admins = await userDao.getAllUsers();
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _saveChurchProfile() async {
+    final churchDao = await DatabaseHelper().churchDao;
+    final updatedProfile = ChurchModel(
+      name: _nameController.text,
+      address: _addressController.text,
+      email: _emailController.text,
+      phone: _phoneController.text,
+    );
+    await churchDao.updateChurchProfile(updatedProfile);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Profil de l\'église mis à jour')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(32.0),
       child: Column(
@@ -27,10 +91,6 @@ class _SettingsPageState extends State<SettingsPage> {
           _buildUserManagement(),
           const SizedBox(height: 32),
           _buildSystemConfig(),
-          const SizedBox(height: 32),
-          _buildSecuritySection(),
-          const SizedBox(height: 32),
-          _buildMaintenanceSection(),
           const SizedBox(height: 48),
           _buildFooter(),
         ],
@@ -93,32 +153,46 @@ class _SettingsPageState extends State<SettingsPage> {
           Expanded(
             child: Column(
               children: [
-                _buildSettingsTextField(
-                  "Nom de l'Église",
-                  "Église Protestante de Labé",
-                ),
+                _buildSettingsTextField("Nom de l'Église", _nameController),
                 const SizedBox(height: 16),
-                _buildSettingsTextField(
-                  "Adresse",
-                  "Quartier Kouroula, Labé, Guinée",
-                ),
+                _buildSettingsTextField("Adresse", _addressController),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
                       child: _buildSettingsTextField(
                         "Email Contact",
-                        "contact@egliselabe.org",
+                        _emailController,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildSettingsTextField(
                         "Téléphone",
-                        "+224 621 00 00 00",
+                        _phoneController,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 24),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: _saveChurchProfile,
+                    icon: const Icon(Icons.save_rounded),
+                    label: const Text("Enregistrer"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.backgroundDark,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -134,12 +208,19 @@ class _SettingsPageState extends State<SettingsPage> {
       icon: Icons.admin_panel_settings_rounded,
       child: Column(
         children: [
-          _buildAdminItem("Mamadou Diallo", "Super Admin", true),
-          const Divider(height: 32),
-          _buildAdminItem("Jean Condé", "Comptable", false),
-          const Divider(height: 32),
-          _buildAdminItem("Marie Camara", "Secrétaire", false),
-          const SizedBox(height: 24),
+          ..._admins.map(
+            (user) => Column(
+              children: [
+                _buildAdminItem(
+                  user.fullName,
+                  user.role,
+                  false,
+                ), // Or determine if it's the current user
+                const Divider(height: 32),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.add_rounded),
@@ -229,17 +310,15 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         children: [
           _buildToggleItem(
-            "Notifications Push",
-            "Recevoir les alertes financières et d'activités",
-            _notificationsEnabled,
-            (val) => setState(() => _notificationsEnabled = val),
-          ),
-          const Divider(height: 32),
-          _buildToggleItem(
             "Mode Sombre",
             "Activer l'interface à contraste élevé",
-            _darkMode,
-            (val) => setState(() => _darkMode = val),
+            themeNotifier.value == ThemeMode.dark,
+            (val) async {
+              themeNotifier.value = val ? ThemeMode.dark : ThemeMode.light;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('isDarkMode', val);
+              setState(() {});
+            },
           ),
           const Divider(height: 32),
           _buildDropdownItem(
@@ -255,94 +334,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSecuritySection() {
-    return _buildSectionCard(
-      title: "Sécurité",
-      icon: Icons.security_rounded,
-      child: Column(
-        children: [
-          _buildActionItem(
-            "Changer le mot de passe",
-            "Dernière modification: il y a 3 mois",
-            Icons.lock_reset_rounded,
-            () {},
-          ),
-          const Divider(height: 32),
-          _buildActionItem(
-            "Double Authentification",
-            "Non configuré",
-            Icons.phonelink_lock_rounded,
-            () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMaintenanceSection() {
-    return _buildSectionCard(
-      title: "Maintenance & Données",
-      icon: Icons.storage_rounded,
-      child: Row(
-        children: [
-          _buildMaintenanceButton(
-            "Sauvegarder",
-            "Backup Data",
-            Icons.backup_rounded,
-            Colors.green,
-          ),
-          const SizedBox(width: 16),
-          _buildMaintenanceButton(
-            "Vider le Cache",
-            "Optimiser",
-            Icons.delete_sweep_rounded,
-            Colors.orange,
-          ),
-          const SizedBox(width: 16),
-          _buildMaintenanceButton(
-            "Réinitialiser",
-            "Danger Zone",
-            Icons.refresh_rounded,
-            Colors.red,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMaintenanceButton(
-    String label,
-    String sub,
-    IconData icon,
-    Color color,
-  ) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.1)),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 12),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(
-                sub,
-                style: TextStyle(color: color.withOpacity(0.5), fontSize: 10),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSectionCard({
     required String title,
     required IconData icon,
@@ -352,9 +343,9 @@ class _SettingsPageState extends State<SettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
+        border: Border.all(color: context.borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,9 +356,10 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(width: 16),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: context.textColor,
                 ),
               ),
             ],
@@ -379,9 +371,12 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSettingsTextField(String label, String value) {
+  Widget _buildSettingsTextField(
+    String label,
+    TextEditingController controller,
+  ) {
     return TextField(
-      controller: TextEditingController(text: value),
+      controller: controller,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -414,7 +409,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               Text(
                 sub,
-                style: const TextStyle(color: Colors.black45, fontSize: 13),
+                style: TextStyle(color: context.subtitleColor, fontSize: 13),
               ),
             ],
           ),
@@ -449,7 +444,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               Text(
                 sub,
-                style: const TextStyle(color: Colors.black45, fontSize: 13),
+                style: TextStyle(color: context.subtitleColor, fontSize: 13),
               ),
             ],
           ),
@@ -485,48 +480,12 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.black45,
+          style: TextStyle(
+            color: context.subtitleColor,
             fontWeight: FontWeight.w500,
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionItem(
-    String title,
-    String sub,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.black38),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  sub,
-                  style: const TextStyle(color: Colors.black45, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: Colors.black26),
-        ],
-      ),
     );
   }
 
@@ -540,13 +499,13 @@ class _SettingsPageState extends State<SettingsPage> {
             width: 40,
           ), // Placeholder for logo
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Version 1.0.0 (Build 20240501)",
-            style: TextStyle(color: Colors.black26, fontSize: 12),
+            style: TextStyle(color: context.iconColor, fontSize: 12),
           ),
-          const Text(
-            "© 2024 Église de Labé - Tous droits réservés",
-            style: TextStyle(color: Colors.black26, fontSize: 12),
+          Text(
+            "© 2024 PROTESTANTE EVANGELIQUE DE LABE - Tous droits réservés",
+            style: TextStyle(color: context.iconColor, fontSize: 12),
           ),
         ],
       ),

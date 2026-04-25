@@ -3,9 +3,76 @@ import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:eglise_labe/features/dashboard/widgets/stat_card.dart';
 import 'package:eglise_labe/features/dashboard/widgets/chart_card.dart';
 import 'package:eglise_labe/features/dashboard/widgets/line_chart.dart';
+import 'package:eglise_labe/core/databases/database_helper.dart';
+import 'package:eglise_labe/core/models/member_model.dart';
+import 'package:eglise_labe/core/models/finance_model.dart';
+import 'package:eglise_labe/core/models/activity_model.dart';
+import 'package:eglise_labe/core/widgets/typewriter_text.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  int _totalMembers = 0;
+  int _newMembersMonth = 0;
+  double _totalOfferings = 0;
+  double _totalTithes = 0;
+  double _totalExpenses = 0;
+  int _activityCount = 0;
+  int _mouvementCount = 0;
+  bool _isLoading = true;
+
+  List<MemberModel> _recentMembers = [];
+  List<FinanceModel> _recentTransactions = [];
+  List<ActivityModel> _recentActivities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final memberDao = await DatabaseHelper().memberDao;
+    final financeDao = await DatabaseHelper().financeDao;
+    final activityDao = await DatabaseHelper().activityDao;
+    final mouvementDao = await DatabaseHelper().mouvementDao;
+
+    final startOfMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+    final totalMembers = await memberDao.getMemberCount();
+    final newMembers = await memberDao.getNewMembersCount(startOfMonth);
+    final offerings = await financeDao.getTotalByType('Offrande');
+    final tithes = await financeDao.getTotalByType('Dîme');
+    final expenses = await financeDao.getTotalExpenses();
+    final activities = await activityDao.getActivityCount();
+    final mouvements = await mouvementDao.getMouvementCount();
+
+    // Fetch real lists for the dashboard
+    final recentMembers = await memberDao.getRecentMembers(5);
+    final recentTransactions = await financeDao.getRecentTransactions(5);
+    final recentActivities = await activityDao.getRecentActivities(3);
+
+    if (mounted) {
+      setState(() {
+        _totalMembers = totalMembers;
+        _newMembersMonth = newMembers;
+        _totalOfferings = offerings;
+        _totalTithes = tithes;
+        _totalExpenses = expenses;
+        _activityCount = activities;
+        _mouvementCount = mouvements;
+        _recentMembers = recentMembers;
+        _recentTransactions = recentTransactions;
+        _recentActivities = recentActivities;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,101 +102,113 @@ class DashboardPage extends StatelessWidget {
 
   Widget _buildHeader() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "ÉGLISE DE LABÉ",
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primaryOrange,
-                letterSpacing: 2,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const TypewriterText(
+                text: "PROTESTANTE EVANGELIQUE DE LABE",
+                style: TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primaryOrange,
+                  letterSpacing: 2,
+                ),
+                duration: Duration(seconds: 4),
               ),
-            ),
-            const Text(
-              "Tableau de Bord Administratif",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D3748),
+              Text(
+                "Tableau de Bord Administratif",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: context.textColor,
+                ),
               ),
-            ),
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on_rounded,
-                  size: 14,
-                  color: Colors.black26,
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  "Labé, Guinée",
-                  style: TextStyle(color: Colors.black45, fontSize: 13),
-                ),
-                const SizedBox(width: 16),
-                const Icon(
-                  Icons.calendar_today_rounded,
-                  size: 14,
-                  color: Colors.black26,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _getFormattedDate(),
-                  style: const TextStyle(color: Colors.black45, fontSize: 13),
-                ),
-              ],
-            ),
-          ],
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on_rounded,
+                    size: 14,
+                    color: context.iconColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    "Labé, Guinée",
+                    style: TextStyle(
+                      color: context.subtitleColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(
+                    Icons.calendar_today_rounded,
+                    size: 14,
+                    color: context.iconColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getFormattedDate(),
+                    style: TextStyle(
+                      color: context.subtitleColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        const Spacer(),
-        _buildAdminInfo(),
+        // const SizedBox(width: 16),
+        // _buildAdminInfo(),
       ],
     );
   }
 
-  Widget _buildAdminInfo() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "Administrateur Momo",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              Text(
-                "Dernière connexion: 10:45",
-                style: TextStyle(color: Colors.black26, fontSize: 11),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          CircleAvatar(
-            backgroundColor: AppColors.primaryOrange.withOpacity(0.1),
-            child: const Text(
-              "M",
-              style: TextStyle(
-                color: AppColors.primaryOrange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildAdminInfo() {
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //     decoration: BoxDecoration(
+  //       color: context.surfaceColor,
+  //       borderRadius: BorderRadius.circular(16),
+  //       border: Border.all(color: context.borderColor),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Column(
+  //           crossAxisAlignment: CrossAxisAlignment.end,
+  //           children: [
+  //             const Text(
+  //               "Administrateur",
+  //               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+  //             ),
+  //             Text(
+  //               "Dernière connexion: ${_getFormattedDate()}",
+  //               style: TextStyle(color: context.iconColor, fontSize: 11),
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(width: 12),
+  //         CircleAvatar(
+  //           backgroundColor: AppColors.primaryOrange.withOpacity(0.1),
+  //           child: const Text(
+  //             "M",
+  //             style: TextStyle(
+  //               color: AppColors.primaryOrange,
+  //               fontWeight: FontWeight.bold,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildQuickActions() {
-    return Row(
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
       children: [
         _QuickActionButton(
           icon: Icons.person_add_rounded,
@@ -137,14 +216,12 @@ class DashboardPage extends StatelessWidget {
           color: Colors.blue,
           onTap: () {},
         ),
-        const SizedBox(width: 16),
         _QuickActionButton(
           icon: Icons.account_balance_wallet_rounded,
           label: "Ajouter Offrande",
           color: Colors.green,
           onTap: () {},
         ),
-        const SizedBox(width: 16),
         _QuickActionButton(
           icon: Icons.event_available_rounded,
           label: "Programmer Activité",
@@ -161,46 +238,60 @@ class DashboardPage extends StatelessWidget {
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: constraints.maxWidth > 1200 ? 6 : 3,
+          crossAxisCount: constraints.maxWidth > 1400
+              ? 7
+              : (constraints.maxWidth > 900 ? 4 : 2),
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           childAspectRatio: 1.5,
-          children: const [
+          children: [
             StatCard(
               title: "Total Membres",
-              value: "250",
+              value: _isLoading ? "..." : _totalMembers.toString(),
               icon: Icons.people_rounded,
-              bgColor: Color(0xFF6366F1),
+              bgColor: const Color(0xFF6366F1),
             ),
             StatCard(
               title: "Nouveaux (Mois)",
-              value: "12",
+              value: _isLoading ? "..." : _newMembersMonth.toString(),
               icon: Icons.person_add_alt_1_rounded,
-              bgColor: Color(0xFF8B5CF6),
+              bgColor: const Color(0xFF8B5CF6),
             ),
             StatCard(
               title: "Offrandes (Total)",
-              value: "1,2M GNF",
+              value: _isLoading
+                  ? "..."
+                  : "${(_totalOfferings / 1000000).toStringAsFixed(1)}M GNF",
               icon: Icons.volunteer_activism_rounded,
-              bgColor: Color(0xFF10B981),
+              bgColor: const Color(0xFF10B981),
             ),
             StatCard(
               title: "Dîmes (Total)",
-              value: "800K GNF",
+              value: _isLoading
+                  ? "..."
+                  : "${(_totalTithes / 100).toStringAsFixed(0)}K GNF",
               icon: Icons.menu_book_rounded,
-              bgColor: Color(0xFF059669),
+              bgColor: const Color(0xFF059669),
             ),
             StatCard(
               title: "Dépenses",
-              value: "350K GNF",
+              value: _isLoading
+                  ? "..."
+                  : "${(_totalExpenses / 1000).toStringAsFixed(0)}K GNF",
               icon: Icons.trending_down_rounded,
-              bgColor: Color(0xFFF43F5E),
+              bgColor: const Color(0xFFF43F5E),
             ),
             StatCard(
               title: "Activités",
-              value: "5",
+              value: _isLoading ? "..." : _activityCount.toString(),
               icon: Icons.event_note_rounded,
-              bgColor: Color(0xFFF59E0B),
+              bgColor: const Color(0xFFF59E0B),
+            ),
+            StatCard(
+              title: "Mouvements",
+              value: _isLoading ? "..." : _mouvementCount.toString(),
+              icon: Icons.hub_rounded,
+              bgColor: const Color(0xFFEC4899),
             ),
           ],
         );
@@ -212,15 +303,17 @@ class DashboardPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFBEB),
+        color: const Color(
+          0xFFD97706,
+        ).withOpacity(context.isDarkMode ? 0.15 : 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFEF3C7)),
+        border: Border.all(color: const Color(0xFFD97706).withOpacity(0.3)),
       ),
       child: Row(
         children: [
           const Icon(Icons.auto_awesome_rounded, color: Color(0xFFD97706)),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -228,12 +321,20 @@ class DashboardPage extends StatelessWidget {
                   "Résumé Intelligent",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF92400E),
+                    color: context.isDarkMode
+                        ? const Color(0xFFFFB347)
+                        : const Color(0xFF92400E),
                   ),
                 ),
                 Text(
-                  "Les offrandes ont augmenté de 15% par rapport à la semaine dernière. Aucune activité prévue demain.",
-                  style: TextStyle(color: Color(0xFFD97706), fontSize: 13),
+                  _isLoading
+                      ? "Chargement du résumé..."
+                      : "Vous avez $_totalMembers membres inscrits et $_activityCount activités au programme. "
+                            "${_newMembersMonth > 0 ? '$_newMembersMonth nouveaux membres ce mois-ci.' : 'Gérez votre église en toute simplicité.'}",
+                  style: const TextStyle(
+                    color: Color(0xFFD97706),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -273,34 +374,24 @@ class DashboardPage extends StatelessWidget {
 
   Widget _buildLatestActivities() {
     return ChartCard(
-      title: "Dernières Activités",
+      title: "Activités Récentes",
       height: 350,
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          _ActivityTile(
-            icon: Icons.person_add_rounded,
-            color: Colors.blue,
-            title: "Nouveau membre ajouté",
-            subtitle: "Momo a été inscrit",
-            time: "Il y a 2h",
-          ),
-          _ActivityTile(
-            icon: Icons.payments_rounded,
-            color: Colors.green,
-            title: "Offrande enregistrée",
-            subtitle: "50 000 GNF par Paul",
-            time: "Il y a 5h",
-          ),
-          _ActivityTile(
-            icon: Icons.event_note_rounded,
-            color: Colors.orange,
-            title: "Culte programmé",
-            subtitle: "Pour dimanche prochain",
-            time: "Il y a 1j",
-          ),
-        ],
-      ),
+      child: _recentActivities.isEmpty
+          ? const Center(child: Text("Aucune activité récente"))
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: _recentActivities.length,
+              itemBuilder: (context, index) {
+                final activity = _recentActivities[index];
+                return _ActivityTile(
+                  icon: Icons.event_note_rounded,
+                  color: AppColors.primaryOrange,
+                  title: activity.name,
+                  subtitle: activity.type,
+                  time: activity.time,
+                );
+              },
+            ),
     );
   }
 
@@ -319,39 +410,38 @@ class DashboardPage extends StatelessWidget {
     return ChartCard(
       title: "Membres Récents",
       height: 400,
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: 5,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final names = [
-            "Paul Keita",
-            "Marie Sylla",
-            "Jean Diallo",
-            "Aissatou Barry",
-            "Ousmane Camara",
-          ];
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: AppColors.backgroundDark.withOpacity(0.05),
-              child: Text(
-                names[index][0],
-                style: const TextStyle(fontSize: 12),
-              ),
+      child: _recentMembers.isEmpty
+          ? const Center(child: Text("Aucun membre récent"))
+          : ListView.separated(
+              shrinkWrap: true,
+              itemCount: _recentMembers.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final member = _recentMembers[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: AppColors.backgroundDark.withOpacity(0.05),
+                    child: Text(
+                      member.fullName.isNotEmpty ? member.fullName[0] : '?',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  title: Text(
+                    member.fullName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  subtitle: Text(
+                    member.phone,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded, size: 16),
+                );
+              },
             ),
-            title: Text(
-              names[index],
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-            subtitle: const Text(
-              "622 00 00 00",
-              style: TextStyle(fontSize: 11),
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded, size: 16),
-          );
-        },
-      ),
     );
   }
 
@@ -359,55 +449,69 @@ class DashboardPage extends StatelessWidget {
     return ChartCard(
       title: "Dernières Transactions",
       height: 400,
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: 5,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final items = [
-            {"name": "Paul", "type": "Dîme", "amount": "100K"},
-            {"name": "Marie", "type": "Offrande", "amount": "50K"},
-            {"name": "Église", "type": "Dépense", "amount": "20K"},
-            {"name": "Jean", "type": "Dîme", "amount": "200K"},
-            {"name": "Anonyme", "type": "Offrande", "amount": "10K"},
-          ];
-          final isExpense = items[index]["type"] == "Dépense";
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              items[index]["name"]!,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      child: _recentTransactions.isEmpty
+          ? const Center(child: Text("Aucune transaction récente"))
+          : ListView.separated(
+              shrinkWrap: true,
+              itemCount: _recentTransactions.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final transaction = _recentTransactions[index];
+                final isExpense = transaction.type == 'Dépense';
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    transaction.description,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    transaction.type,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  trailing: Text(
+                    "${isExpense ? '-' : '+'}${transaction.amount} GNF",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: isExpense ? Colors.red : Colors.green,
+                    ),
+                  ),
+                );
+              },
             ),
-            subtitle: Text(
-              items[index]["type"]!,
-              style: const TextStyle(fontSize: 11),
-            ),
-            trailing: Text(
-              "${isExpense ? '-' : '+'}${items[index]["amount"]} GNF",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: isExpense ? Colors.redAccent : Colors.green,
-                fontSize: 13,
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 
   Widget _buildUpcomingActivitiesFull() {
+    if (_recentActivities.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return ChartCard(
-      title: "Prochaines Activités",
+      title: "Activités Programmées",
       height: 250,
-      child: Row(
-        children: [
-          _buildEventCard("DÉC", "24", "Culte de Noël", "18:00 - 20:00"),
-          const SizedBox(width: 16),
-          _buildEventCard("DÉC", "31", "Veillée de Nouvel An", "22:00 - 00:00"),
-          const SizedBox(width: 16),
-          _buildEventCard("JAN", "05", "Étude Biblique", "17:00 - 18:30"),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _recentActivities.take(3).map((activity) {
+            return SizedBox(
+              width: 300,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: _buildEventCard(
+                  activity.type.substring(0, 3).toUpperCase(),
+                  activity.id.toString(),
+                  activity.name,
+                  activity.time,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -457,7 +561,10 @@ class DashboardPage extends StatelessWidget {
                   ),
                   Text(
                     time,
-                    style: const TextStyle(color: Colors.black26, fontSize: 12),
+                    style: TextStyle(
+                      color: context.subtitleColor,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -574,15 +681,12 @@ class _ActivityTile extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.black45, fontSize: 11),
+                  style: TextStyle(color: context.subtitleColor, fontSize: 11),
                 ),
               ],
             ),
           ),
-          Text(
-            time,
-            style: const TextStyle(color: Colors.black26, fontSize: 11),
-          ),
+          Text(time, style: TextStyle(color: context.iconColor, fontSize: 11)),
         ],
       ),
     );

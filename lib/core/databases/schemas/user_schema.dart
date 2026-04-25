@@ -3,7 +3,7 @@ class UserSchema {
 
   static const String createTableQuery =
       '''
-    CREATE TABLE $tableName (
+    CREATE TABLE IF NOT EXISTS $tableName (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       full_name TEXT NOT NULL,
       email TEXT UNIQUE,

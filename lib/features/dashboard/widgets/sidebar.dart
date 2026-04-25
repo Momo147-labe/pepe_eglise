@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
+import 'package:eglise_labe/features/auth/pages/auth_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Sidebar extends StatelessWidget {
   final int currentIndex;
@@ -15,7 +18,7 @@ class Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 250,
-      color: AppColors.backgroundDark,
+      color: context.sidebarColor,
       child: Column(
         children: [
           const _SidebarLogo(),
@@ -41,25 +44,31 @@ class Sidebar extends StatelessWidget {
                       onTap: () => onItemSelected(1),
                     ),
                     _SidebarItem(
-                      icon: Icons.account_balance_wallet_rounded,
-                      label: "Finances",
+                      icon: Icons.hub_rounded,
+                      label: "Mouvements",
                       isActive: currentIndex == 2,
                       onTap: () => onItemSelected(2),
                     ),
                     _SidebarItem(
-                      icon: Icons.assignment_rounded,
-                      label: "Activités",
+                      icon: Icons.account_balance_wallet_rounded,
+                      label: "Finances",
                       isActive: currentIndex == 3,
                       onTap: () => onItemSelected(3),
                     ),
                     _SidebarItem(
-                      icon: Icons.event_rounded,
-                      label: "Événements",
+                      icon: Icons.assignment_rounded,
+                      label: "Activités",
                       isActive: currentIndex == 4,
                       onTap: () => onItemSelected(4),
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
+                    _SidebarItem(
+                      icon: Icons.event_rounded,
+                      label: "Événements",
+                      isActive: currentIndex == 5,
+                      onTap: () => onItemSelected(5),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 16,
                       ),
@@ -68,14 +77,14 @@ class Sidebar extends StatelessWidget {
                     _SidebarItem(
                       icon: Icons.analytics_rounded,
                       label: "Rapports",
-                      isActive: currentIndex == 5,
-                      onTap: () => onItemSelected(5),
+                      isActive: currentIndex == 6,
+                      onTap: () => onItemSelected(6),
                     ),
                     _SidebarItem(
                       icon: Icons.settings_rounded,
                       label: "Paramètres",
-                      isActive: currentIndex == 6,
-                      onTap: () => onItemSelected(6),
+                      isActive: currentIndex == 7,
+                      onTap: () => onItemSelected(7),
                     ),
                   ],
                 ),
@@ -89,7 +98,15 @@ class Sidebar extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('isLoggedIn', false);
+
+                  if (!context.mounted) return;
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const AuthPage()),
+                  );
+                },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -135,59 +152,141 @@ class _SidebarLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 220,
+      height: 240,
       width: double.infinity,
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(20, 24, 20, 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         image: const DecorationImage(
           image: AssetImage('assets/eglise.jpeg'),
           fit: BoxFit.cover,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 24,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
-            stops: const [0.5, 1.0],
-          ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
           children: [
-            RichText(
-              text: const TextSpan(
-                children: [
-                  TextSpan(
-                    text: "ÉGLISE",
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w300,
-                      color: Colors.white70,
-                      letterSpacing: 4,
-                    ),
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.1),
+                      Colors.black.withOpacity(0.5),
+                      Colors.black.withOpacity(0.95),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
-                  TextSpan(
-                    text: "\nDE LABÉ",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 1,
-                      height: 1.2,
-                    ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.church_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.greenAccent,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.greenAccent,
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              "Admin",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ÉGLISE PROTESTANTE",
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        "ÉVANGÉLIQUE\nDE LABÉ",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -224,23 +323,32 @@ class _SidebarItem extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isActive ? Colors.white : Colors.transparent,
+              color: isActive
+                  ? AppColors.primaryOrange.withOpacity(0.1)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
+              border: isActive
+                  ? Border.all(color: AppColors.primaryOrange.withOpacity(0.2))
+                  : null,
             ),
             child: Row(
               children: [
                 Icon(
                   icon,
-                  color: isActive ? AppColors.backgroundDark : Colors.white70,
+                  color: isActive ? AppColors.primaryOrange : Colors.white70,
                   size: 22,
                 ),
                 const SizedBox(width: 16),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: isActive ? AppColors.backgroundDark : Colors.white70,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 14,
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isActive
+                          ? AppColors.primaryOrange
+                          : Colors.white70,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:eglise_labe/features/auth/widgets/auth_text_field.dart';
 import 'package:eglise_labe/features/auth/widgets/auth_button.dart';
@@ -30,7 +31,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: context.surfaceColor,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth > 900;
@@ -42,7 +43,7 @@ class _AuthPageState extends State<AuthPage> {
               Expanded(
                 flex: 1,
                 child: Container(
-                  color: AppColors.backgroundDark,
+                  color: context.surfaceColor,
                   child: Center(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.symmetric(
@@ -126,6 +127,7 @@ class _LoginFormState extends State<_LoginForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _rememberMe = false;
 
   String _hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -151,6 +153,12 @@ class _LoginFormState extends State<_LoginForm> {
         final hashedPassword = _hashPassword(_passwordController.text);
 
         if (user.passwordHash == hashedPassword) {
+          if (_rememberMe) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('isLoggedIn', true);
+            await prefs.setString('userEmail', _emailController.text);
+          }
+
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const MainLayout()),
@@ -182,11 +190,11 @@ class _LoginFormState extends State<_LoginForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Connexion", style: _titleStyle),
+        Text("Connexion", style: _getTitleStyle(context)),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           "Gestion administrative simplifiée pour votre église",
-          style: _subtitleStyle,
+          style: _getSubtitleStyle(context),
         ),
         const SizedBox(height: 48),
         AuthTextField(label: "Adresse e-mail", controller: _emailController),
@@ -195,6 +203,28 @@ class _LoginFormState extends State<_LoginForm> {
           label: "Mot de passe",
           isPassword: true,
           controller: _passwordController,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            SizedBox(
+              height: 24,
+              width: 24,
+              child: Checkbox(
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() => _rememberMe = value ?? false);
+                },
+                activeColor: AppColors.primaryOrange,
+                side: BorderSide(color: context.borderColor),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              "Se souvenir de moi",
+              style: TextStyle(color: context.subtitleColor, fontSize: 14),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
         Align(
@@ -216,9 +246,9 @@ class _LoginFormState extends State<_LoginForm> {
           child: Wrap(
             alignment: WrapAlignment.center,
             children: [
-              const Text(
+              Text(
                 "Nouveau ici ? ",
-                style: TextStyle(color: Colors.white60),
+                style: TextStyle(color: context.subtitleColor),
               ),
               GestureDetector(
                 onTap: () => widget.onModeChange(AuthMode.register),
@@ -321,11 +351,11 @@ class _RegisterFormState extends State<_RegisterForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Inscription", style: _titleStyle),
+        Text("Inscription", style: _getTitleStyle(context)),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           "Créez votre compte pour commencer la gestion de votre église",
-          style: _subtitleStyle,
+          style: _getSubtitleStyle(context),
         ),
         const SizedBox(height: 48),
         AuthTextField(label: "Nom complet", controller: _nameController),
@@ -347,9 +377,9 @@ class _RegisterFormState extends State<_RegisterForm> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               "Déjà un compte ? ",
-              style: TextStyle(color: Colors.white60),
+              style: TextStyle(color: context.subtitleColor),
             ),
             TextButton(
               onPressed: () => widget.onModeChange(AuthMode.login),
@@ -440,11 +470,11 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Récupération", style: _titleStyle),
+        Text("Récupération", style: _getTitleStyle(context)),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           "Entrez votre e-mail et votre nouveau mot de passe pour le réinitialiser",
-          style: _subtitleStyle,
+          style: _getSubtitleStyle(context),
         ),
         const SizedBox(height: 48),
         AuthTextField(label: "Adresse e-mail", controller: _emailController),
@@ -465,9 +495,9 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         Center(
           child: TextButton(
             onPressed: () => widget.onModeChange(AuthMode.login),
-            child: const Text(
+            child: Text(
               "Retour à la connexion",
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: context.textColor),
             ),
           ),
         ),
@@ -476,19 +506,16 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
   }
 }
 
-const _titleStyle = TextStyle(
-  color: Colors.white,
+TextStyle _getTitleStyle(BuildContext context) => TextStyle(
+  color: context.textColor,
   fontSize: 48,
   fontWeight: FontWeight.bold,
   letterSpacing: -1,
-  fontFamily: 'serif', // System serif fallback for slightly more classic look
+  fontFamily: 'serif',
 );
 
-const _subtitleStyle = TextStyle(
-  color: Colors.white60,
-  fontSize: 18,
-  height: 1.5,
-);
+TextStyle _getSubtitleStyle(BuildContext context) =>
+    TextStyle(color: context.subtitleColor, fontSize: 18, height: 1.5);
 
 class _HeaderIllustration extends StatelessWidget {
   const _HeaderIllustration();
@@ -520,9 +547,9 @@ class _HeaderIllustration extends StatelessWidget {
                       vertical: 30,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: context.surfaceColor.withOpacity(0.1),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: context.borderColor.withOpacity(0.2),
                         width: 1,
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -540,23 +567,23 @@ class _HeaderIllustration extends StatelessWidget {
                         const SizedBox(height: 20),
                         RichText(
                           textAlign: TextAlign.center,
-                          text: const TextSpan(
+                          text: TextSpan(
                             children: [
                               TextSpan(
-                                text: "ÉGLISE",
+                                text: "PROTESTANTE",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w300,
-                                  color: Colors.white70,
-                                  letterSpacing: 6,
+                                  color: context.subtitleColor,
+                                  letterSpacing: 4,
                                 ),
                               ),
                               TextSpan(
-                                text: "\nDE LABÉ",
+                                text: "\nEVANGELIQUE DE LABE",
                                 style: TextStyle(
-                                  fontSize: 42,
+                                  fontSize: 32,
                                   fontWeight: FontWeight.w900,
-                                  color: Colors.white,
+                                  color: context.textColor,
                                   letterSpacing: 2,
                                   height: 1.2,
                                 ),

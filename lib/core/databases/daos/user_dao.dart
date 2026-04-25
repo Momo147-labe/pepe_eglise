@@ -22,6 +22,13 @@ class UserDao {
     return UserModel.fromMap(maps.first);
   }
 
+  Future<List<UserModel>> getAllUsers() async {
+    final List<Map<String, dynamic>> maps = await db.query(
+      UserSchema.tableName,
+    );
+    return maps.map((map) => UserModel.fromMap(map)).toList();
+  }
+
   Future<int> updatePasswordByEmail(
     String email,
     String newPasswordHash,

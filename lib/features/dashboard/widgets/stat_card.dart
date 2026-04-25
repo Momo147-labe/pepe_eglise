@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:eglise_labe/core/constants/colors.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -21,7 +22,7 @@ class StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -50,16 +51,16 @@ class StatCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3748),
+                    color: context.textColor,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 14, color: Colors.black45),
+                  style: TextStyle(fontSize: 14, color: context.subtitleColor),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
