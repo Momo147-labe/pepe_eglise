@@ -43,16 +43,23 @@ class _AuthPageState extends State<AuthPage> {
               Expanded(
                 flex: 1,
                 child: Container(
-                  color: context.surfaceColor,
-                  child: Center(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: constraints.maxWidth * 0.08,
-                        vertical: 40,
+                  color: context.sidebarColor,
+                  child: SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                      child: _PersistentAuthContent(
-                        mode: _mode,
-                        onModeChange: _setMode,
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: constraints.maxWidth * 0.08,
+                            vertical: 40,
+                          ),
+                          child: _PersistentAuthContent(
+                            mode: _mode,
+                            onModeChange: _setMode,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -216,13 +223,13 @@ class _LoginFormState extends State<_LoginForm> {
                   setState(() => _rememberMe = value ?? false);
                 },
                 activeColor: AppColors.primaryOrange,
-                side: BorderSide(color: context.borderColor),
+                side: const BorderSide(color: Colors.white24),
               ),
             ),
             const SizedBox(width: 12),
             Text(
               "Se souvenir de moi",
-              style: TextStyle(color: context.subtitleColor, fontSize: 14),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
           ],
         ),
@@ -248,7 +255,7 @@ class _LoginFormState extends State<_LoginForm> {
             children: [
               Text(
                 "Nouveau ici ? ",
-                style: TextStyle(color: context.subtitleColor),
+                style: const TextStyle(color: Colors.white70),
               ),
               GestureDetector(
                 onTap: () => widget.onModeChange(AuthMode.register),
@@ -379,7 +386,7 @@ class _RegisterFormState extends State<_RegisterForm> {
           children: [
             Text(
               "Déjà un compte ? ",
-              style: TextStyle(color: context.subtitleColor),
+              style: const TextStyle(color: Colors.white70),
             ),
             TextButton(
               onPressed: () => widget.onModeChange(AuthMode.login),
@@ -497,7 +504,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
             onPressed: () => widget.onModeChange(AuthMode.login),
             child: Text(
               "Retour à la connexion",
-              style: TextStyle(color: context.textColor),
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ),
@@ -506,8 +513,8 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
   }
 }
 
-TextStyle _getTitleStyle(BuildContext context) => TextStyle(
-  color: context.textColor,
+TextStyle _getTitleStyle(BuildContext context) => const TextStyle(
+  color: Colors.white,
   fontSize: 48,
   fontWeight: FontWeight.bold,
   letterSpacing: -1,
@@ -515,7 +522,7 @@ TextStyle _getTitleStyle(BuildContext context) => TextStyle(
 );
 
 TextStyle _getSubtitleStyle(BuildContext context) =>
-    TextStyle(color: context.subtitleColor, fontSize: 18, height: 1.5);
+    const TextStyle(color: Colors.white70, fontSize: 18, height: 1.5);
 
 class _HeaderIllustration extends StatelessWidget {
   const _HeaderIllustration();
@@ -571,19 +578,19 @@ class _HeaderIllustration extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: "PROTESTANTE",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w300,
-                                  color: context.subtitleColor,
+                                  color: Colors.white70,
                                   letterSpacing: 4,
                                 ),
                               ),
                               TextSpan(
                                 text: "\nEVANGELIQUE DE LABE",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 32,
                                   fontWeight: FontWeight.w900,
-                                  color: context.textColor,
+                                  color: Colors.white,
                                   letterSpacing: 2,
                                   height: 1.2,
                                 ),

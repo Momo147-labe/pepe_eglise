@@ -35,8 +35,8 @@ class _AuthTextFieldState extends State<AuthTextField> {
           padding: const EdgeInsets.only(bottom: 8.0, left: 4),
           child: Text(
             widget.label,
-            style: TextStyle(
-              color: context.subtitleColor,
+            style: const TextStyle(
+              color: Colors.white70,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -44,14 +44,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: context.surfaceHighlightColor.withOpacity(0.5),
+            color: AppColors.inputBackground,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: context.borderColor),
+            border: Border.all(color: AppColors.inputBorder),
           ),
           child: TextField(
             controller: widget.controller,
             obscureText: _obscureText,
-            style: TextStyle(color: context.textColor),
+            style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -59,17 +59,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
               ),
               border: InputBorder.none,
               hintText: widget.label,
-              hintStyle: TextStyle(
-                color: context.iconColor.withOpacity(0.5),
-                fontSize: 14,
-              ),
+              hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
               suffixIcon: widget.isPassword
                   ? IconButton(
                       icon: Icon(
                         _obscureText
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
-                        color: context.iconColor.withOpacity(0.5),
+                        color: Colors.white54,
                         size: 20,
                       ),
                       onPressed: () {
