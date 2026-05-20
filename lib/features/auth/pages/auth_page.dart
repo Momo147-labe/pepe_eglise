@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -524,19 +525,44 @@ TextStyle _getTitleStyle(BuildContext context) => const TextStyle(
 TextStyle _getSubtitleStyle(BuildContext context) =>
     const TextStyle(color: Colors.white70, fontSize: 18, height: 1.5);
 
-class _HeaderIllustration extends StatelessWidget {
+class _HeaderIllustration extends StatefulWidget {
   const _HeaderIllustration();
+
+  @override
+  State<_HeaderIllustration> createState() => _HeaderIllustrationState();
+}
+
+class _HeaderIllustrationState extends State<_HeaderIllustration> {
+  String? _logoPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLogo();
+  }
+
+  Future<void> _loadLogo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _logoPath = prefs.getString('church_logo_path');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/eglise.jpeg'),
-              fit: BoxFit.cover,
-            ),
+          decoration: BoxDecoration(
+            image: _logoPath != null && File(_logoPath!).existsSync()
+                ? DecorationImage(
+                    image: FileImage(File(_logoPath!)),
+                    fit: BoxFit.cover,
+                  )
+                : const DecorationImage(
+                    image: AssetImage('assets/eglise.jpeg'),
+                    fit: BoxFit.cover,
+                  ),
           ),
         ),
         Container(color: AppColors.backgroundDark.withOpacity(0.4)),

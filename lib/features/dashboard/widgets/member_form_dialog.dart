@@ -2,6 +2,8 @@ import 'dart:io' show Platform, File, Directory;
 import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:eglise_labe/core/databases/database_helper.dart';
 import 'package:eglise_labe/core/databases/database_path.dart';
+import 'package:eglise_labe/core/databases/daos/mouvement_dao.dart';
+import 'package:eglise_labe/core/databases/schemas/mouvement_schema.dart';
 import 'package:eglise_labe/core/models/member_model.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -34,23 +36,14 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
 
   String selectedGender = 'M';
   String selectedMaritalStatus = 'Célibataire';
-  String selectedGroup = '👥 Jeunesse';
+  String selectedGroup = 'Autre...';
+  String selectedStatus = 'Actif';
   bool isCustomGroup = false;
   DateTime? selectedBirthDate;
   XFile? pickedImage;
 
-  final List<String> groupOptions = [
-    '🎶 Louange',
-    '🙏 Prière',
-    '👥 Jeunesse',
-    '👩 Femmes',
-    '👨 Hommes',
-    '🧒 Enfants',
-    '📖 Évangélisation',
-    '🛡️ Sécurité',
-    '💻 Technique',
-    'Autre...',
-  ];
+  List<String> groupOptions = ['Autre...'];
+  Map<String, int> _mouvementsMap = {}; // nom -> id
 
   final List<String> genderOptions = ['M', 'F'];
   final Map<String, String> genderLabels = {'M': 'Masculin', 'F': 'Féminin'};
@@ -60,10 +53,25 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
     'Divorcé(e)',
     'Veuf/Veuve',
   ];
+  final List<String> statusOptions = ['Actif', 'Inactif'];
 
   @override
   void initState() {
     super.initState();
+    // Default group options for offline/initial fallback
+    groupOptions = [
+      '🎶 Louange',
+      '🙏 Prière',
+      '👥 Jeunesse',
+      '👩 Femmes',
+      '👨 Hommes',
+      '🧒 Enfants',
+      '📖 Évangélisation',
+      '🛡️ Sécurité',
+      '💻 Technique',
+      'Autre...',
+    ];
+
     if (widget.member != null) {
       final m = widget.member!;
       // Split full name if possible, or just put it in Nom
@@ -77,6 +85,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       phoneCtrl.text = m.phone;
       selectedGender = m.gender;
       selectedMaritalStatus = m.maritalStatus;
+      selectedStatus = m.memberStatus;
       lieuNaissanceCtrl.text = m.birthPlace ?? '';
       quartierCtrl.text = m.quartier ?? '';
       childrenCountCtrl.text = (m.childrenCount ?? 0).toString();
@@ -102,6 +111,50 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         isCustomGroup = true;
         customGroupeCtrl.text = m.groupName;
       }
+    } else {
+      selectedGroup = '👥 Jeunesse';
+    }
+
+    _loadMouvements();
+  }
+
+  Future<void> _loadMouvements() async {
+    try {
+      final dbHelper = DatabaseHelper();
+      final database = await dbHelper.database;
+      final mouvementDao = MouvementDao(database);
+      final list = await mouvementDao.getAllMouvements();
+      
+      if (!mounted) return;
+      
+      setState(() {
+        if (list.isNotEmpty) {
+          // Build nom -> id map for later use in _saveMember
+          _mouvementsMap = { for (final m in list) m.nom : m.id! };
+          final dbGroups = list.map((m) => m.nom).toList();
+          groupOptions = [...dbGroups];
+          if (!groupOptions.contains('Autre...')) {
+            groupOptions.add('Autre...');
+          }
+          
+          if (widget.member != null) {
+            final m = widget.member!;
+            if (groupOptions.contains(m.groupName)) {
+              selectedGroup = m.groupName;
+              isCustomGroup = false;
+            } else {
+              selectedGroup = 'Autre...';
+              isCustomGroup = true;
+              customGroupeCtrl.text = m.groupName;
+            }
+          } else {
+            selectedGroup = groupOptions.first;
+            isCustomGroup = selectedGroup == 'Autre...';
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("Error loading movements in form: $e");
     }
   }
 
@@ -446,76 +499,55 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildFormTextField(
-                          "Nom du Conjoint",
-                          "Si marié(e)",
-                          conjointCtrl,
-                        ),
-                      ),
+                      const Expanded(child: SizedBox()),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _buildFormTextField(
-                          "Nombre d'Enfants",
-                          "0",
-                          childrenCountCtrl,
-                          isNumber: true,
+                      Text(
+                        "Groupe (Mouvement)",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.subtitleColor,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Groupe (Mouvement)",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: context.subtitleColor,
-                              ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: selectedGroup,
+                        decoration: InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: context.borderColor,
                             ),
-                            const SizedBox(height: 8),
-                            DropdownButtonFormField<String>(
-                              value: selectedGroup,
-                              decoration: InputDecoration(
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: context.borderColor,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.primaryOrange,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                              ),
-                              dropdownColor: context.surfaceColor,
-                              style: TextStyle(color: context.textColor),
-                              items: groupOptions.map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
-                              onChanged: (newValue) {
-                                setState(() {
-                                  selectedGroup = newValue!;
-                                  isCustomGroup = newValue == 'Autre...';
-                                });
-                              },
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppColors.primaryOrange,
                             ),
-                          ],
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                         ),
+                        dropdownColor: context.surfaceColor,
+                        style: TextStyle(color: context.textColor),
+                        items: groupOptions.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedGroup = newValue!;
+                            isCustomGroup = newValue == 'Autre...';
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -538,7 +570,55 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(child: SizedBox()), // Spacer
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Statut",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.subtitleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: selectedStatus,
+                              decoration: InputDecoration(
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: context.borderColor,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primaryOrange,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              dropdownColor: context.surfaceColor,
+                              style: TextStyle(color: context.textColor),
+                              items: statusOptions.map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  selectedStatus = newValue!;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -687,16 +767,21 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       finalImagePath = widget.member!.imagePath;
     }
 
-    final dao = await DatabaseHelper().memberDao;
+    final dbHelper = DatabaseHelper();
+    final dao = await dbHelper.memberDao;
+    final database = await dbHelper.database;
+    final mouvementDao = MouvementDao(database);
+
+    final groupName = isCustomGroup ? customGroupeCtrl.text : selectedGroup;
 
     if (widget.member == null) {
       final newMember = MemberModel(
         fullName: fullName,
         phone: phoneCtrl.text,
         gender: selectedGender,
-        groupName: isCustomGroup ? customGroupeCtrl.text : selectedGroup,
+        groupName: groupName,
         maritalStatus: selectedMaritalStatus,
-        memberStatus: 'Actif',
+        memberStatus: selectedStatus,
         joinedAt: DateTime.now().toIso8601String(),
         birthDate: selectedBirthDate?.toIso8601String(),
         birthPlace: lieuNaissanceCtrl.text,
@@ -705,16 +790,22 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         imagePath: finalImagePath,
         quartier: quartierCtrl.text,
       );
-      await dao.insertMember(newMember);
+      final newId = await dao.insertMember(newMember);
+
+      // Automatically link the new member to the selected mouvement
+      if (!isCustomGroup && _mouvementsMap.containsKey(selectedGroup)) {
+        final mouvementId = _mouvementsMap[selectedGroup]!;
+        await mouvementDao.addMemberToMouvement(newId, mouvementId);
+      }
     } else {
       final updatedMember = MemberModel(
         id: widget.member!.id,
         fullName: fullName,
         phone: phoneCtrl.text,
         gender: selectedGender,
-        groupName: isCustomGroup ? customGroupeCtrl.text : selectedGroup,
+        groupName: groupName,
         maritalStatus: selectedMaritalStatus,
-        memberStatus: widget.member!.memberStatus,
+        memberStatus: selectedStatus,
         joinedAt: widget.member!.joinedAt,
         birthDate: selectedBirthDate?.toIso8601String(),
         birthPlace: lieuNaissanceCtrl.text,
@@ -724,6 +815,19 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         quartier: quartierCtrl.text,
       );
       await dao.updateMember(updatedMember);
+
+      // Automatically link the updated member to the newly selected mouvement
+      if (!isCustomGroup && _mouvementsMap.containsKey(selectedGroup)) {
+        final mouvementId = _mouvementsMap[selectedGroup]!;
+        await mouvementDao.addMemberToMouvement(widget.member!.id!, mouvementId);
+      } else {
+        // If switched to a custom group, remove them from any existing mouvement
+        await database.delete(
+          MouvementSchema.memberRelationTable,
+          where: 'membre_id = ?',
+          whereArgs: [widget.member!.id],
+        );
+      }
     }
 
     widget.onSaved();

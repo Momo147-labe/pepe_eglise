@@ -33,9 +33,24 @@ class _ReportingPageState extends State<ReportingPage> {
     final financeDao = await dbHelper.financeDao;
 
     final currentYear = DateTime.now().year;
-    final total = await memberDao.getMemberCount();
-    final growthThisYear = await memberDao.getYearlyGrowth(currentYear);
-    final growthLastYear = await memberDao.getYearlyGrowth(currentYear - 1);
+    
+    final results = await Future.wait<dynamic>([
+      memberDao.getMemberCount(),
+      memberDao.getYearlyGrowth(currentYear),
+      memberDao.getYearlyGrowth(currentYear - 1),
+      memberDao.getMemberStatusDistribution(),
+      financeDao.getYearlyTrend(currentYear),
+      financeDao.getTotalIncome(),
+      financeDao.getTotalExpenses(),
+    ]);
+
+    final int total = results[0];
+    final int growthThisYear = results[1];
+    final int growthLastYear = results[2];
+    final Map<String, int> distribution = results[3];
+    final List<Map<String, dynamic>> trend = results[4];
+    final double totalInc = results[5];
+    final double totalExp = results[6];
 
     double growthPerc = 0;
     if (growthLastYear > 0) {
@@ -43,12 +58,6 @@ class _ReportingPageState extends State<ReportingPage> {
     } else if (growthThisYear > 0) {
       growthPerc = 100;
     }
-
-    final distribution = await memberDao.getMemberStatusDistribution();
-    final trend = await financeDao.getYearlyTrend(currentYear);
-
-    double totalInc = await financeDao.getTotalIncome();
-    double totalExp = await financeDao.getTotalExpenses();
 
     setState(() {
       _totalMembers = total;
@@ -120,7 +129,7 @@ class _ReportingPageState extends State<ReportingPage> {
           children: [
             _buildHeaderAction(
               icon: Icons.date_range_rounded,
-              label: "Année 2024",
+              label: "Année ${DateTime.now().year}",
               onTap: () {},
               color: context.surfaceColor,
               textColor: context.textColor,
@@ -129,9 +138,14 @@ class _ReportingPageState extends State<ReportingPage> {
             _buildHeaderAction(
               icon: Icons.picture_as_pdf_rounded,
               label: "Rapport Annuel PDF",
-              onTap: () {
+              onTap: () async {
                 if (_isLoading) return;
-                ReportingPdfService().generateAnnualReport(
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Génération du rapport en cours...')),
+                );
+
+                await ReportingPdfService().generateAnnualReport(
                   totalMembers: _totalMembers,
                   memberGrowth: _memberGrowth,
                   statusDistribution: _statusDistribution,
@@ -139,6 +153,12 @@ class _ReportingPageState extends State<ReportingPage> {
                   totalIncome: _totalIncome,
                   totalExpenses: _totalExpenses,
                 );
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Rapport généré avec succès !')),
+                  );
+                }
               },
               color: AppColors.primaryOrange,
               textColor: Colors.white,
@@ -233,7 +253,7 @@ class _ReportingPageState extends State<ReportingPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -324,7 +344,7 @@ class _ReportingPageState extends State<ReportingPage> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 20),
@@ -528,7 +548,7 @@ class _ReportingPageState extends State<ReportingPage> {
                         ),
                         LineChartBarData(
                           isCurved: true,
-                          color: context.iconColor.withOpacity(0.2),
+                          color: context.iconColor.withValues(alpha: 0.2),
                           barWidth: 2,
                           dashArray: [5, 5],
                           dotData: const FlDotData(show: false),

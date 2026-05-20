@@ -22,7 +22,7 @@ import 'daos/attendance_dao.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
-  static const int _databaseVersion = 11;
+  static const int _databaseVersion = 12;
   static Database? _database;
   // Prevents concurrent openDatabase calls (race condition fix)
   static Completer<Database>? _dbCompleter;
@@ -58,6 +58,7 @@ class DatabaseHelper {
 
   Future<void> _onCreate(Database db, int version) async {
     await _createTables(db);
+    await _seedDefaultMouvements(db);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -129,6 +130,45 @@ class DatabaseHelper {
         // Columns might already exist
       }
     }
+    if (oldVersion < 12) {
+      try {
+        await db.execute(
+          'ALTER TABLE ${MouvementSchema.memberRelationTable} ADD COLUMN poste TEXT DEFAULT "Membre"',
+        );
+      } catch (e) {
+        // Column might already exist
+      }
+      await _seedDefaultMouvements(db);
+    }
+  }
+
+  Future<void> _seedDefaultMouvements(Database db) async {
+    final List<String> defaultMouvements = [
+      "Mouvement des Hommes",
+      "Mouvement des Femmes",
+      "Mouvement de la Jeunesse",
+      "Commission Locale",
+      "Mouvement des Enfants",
+    ];
+    for (var name in defaultMouvements) {
+      try {
+        final count = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM ${MouvementSchema.tableName} WHERE nom = ?',
+            [name],
+          ),
+        );
+        if (count == null || count == 0) {
+          await db.insert(MouvementSchema.tableName, {
+            'nom': name,
+            'description': 'Groupe par défaut pour les activités de l\'église.',
+            'date_creation': DateTime.now().toIso8601String(),
+          });
+        }
+      } catch (e) {
+        // Ignored
+      }
+    }
   }
 
   Future<void> _createTables(Database db) async {
@@ -182,5 +222,13 @@ class DatabaseHelper {
   Future<AttendanceDao> get attendanceDao async {
     final db = await database;
     return AttendanceDao(db);
+  }
+
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+      _dbCompleter = null;
+    }
   }
 }

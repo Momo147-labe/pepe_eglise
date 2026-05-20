@@ -3,6 +3,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReportingPdfService {
   Future<void> generateAnnualReport({
@@ -18,8 +20,18 @@ class ReportingPdfService {
     // Try loading logo
     pw.ImageProvider? logoImage;
     try {
-      final logoData = await rootBundle.load('assets/eglise.jpeg');
-      logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      final prefs = await SharedPreferences.getInstance();
+      final logoPath = prefs.getString('church_logo_path');
+      if (logoPath != null && logoPath.isNotEmpty) {
+        final file = File(logoPath);
+        if (await file.exists()) {
+          logoImage = pw.MemoryImage(await file.readAsBytes());
+        }
+      }
+      if (logoImage == null) {
+        final logoData = await rootBundle.load('assets/eglise.jpeg');
+        logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      }
     } catch (_) {}
 
     final currencyFormat = NumberFormat.currency(

@@ -7,6 +7,7 @@ import 'package:eglise_labe/features/dashboard/widgets/member_form_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/member_details_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/members_table.dart';
 import 'package:eglise_labe/core/services/card_pdf_service.dart';
+import 'package:eglise_labe/features/dashboard/widgets/pdf_preview_dialog.dart';
 
 class MembersPage extends StatefulWidget {
   const MembersPage({super.key});
@@ -31,21 +32,7 @@ class _MembersPageState extends State<MembersPage> {
   final ScrollController _verticalController = ScrollController();
   final ScrollController _horizontalController = ScrollController();
 
-  int? _calculateAge(String? birthDateStr) {
-    if (birthDateStr == null) return null;
-    try {
-      final birthDate = DateTime.parse(birthDateStr);
-      final now = DateTime.now();
-      int age = now.year - birthDate.year;
-      if (now.month < birthDate.month ||
-          (now.month == birthDate.month && now.day < birthDate.day)) {
-        age--;
-      }
-      return age;
-    } catch (_) {
-      return null;
-    }
-  }
+
 
   @override
   void initState() {
@@ -62,8 +49,9 @@ class _MembersPageState extends State<MembersPage> {
     final men = await dao.getGenderCount('M');
     final women = await dao.getGenderCount('F');
 
-    // Extract unique groups
-    final groups = members.map((m) => m.groupName).toSet().toList();
+    final mouvementDao = await DatabaseHelper().mouvementDao;
+    final mouvements = await mouvementDao.getAllMouvements();
+    final groups = mouvements.map((m) => m.nom).toSet().toList();
     groups.sort();
 
     setState(() {
@@ -164,8 +152,17 @@ class _MembersPageState extends State<MembersPage> {
         ),
         Row(
           children: [
-            _buildHeaderAction(Icons.print_rounded, "Imprimer Tout", () {
-              CardPdfService().generateAllMemberCards(_filteredMembers);
+            _buildHeaderAction(Icons.print_rounded, "Impression en Groupe", () async {
+              final pdfData = await CardPdfService().generateAllMemberCards(_filteredMembers);
+              if (mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => PdfPreviewDialog(
+                    pdfData: pdfData,
+                    title: "Impression des cartes membres",
+                  ),
+                );
+              }
             }),
             const SizedBox(width: 16),
             _buildHeaderAction(Icons.download_rounded, "Exporter", () {
@@ -433,7 +430,18 @@ class _MembersPageState extends State<MembersPage> {
       onView: _showMemberDetails,
       onEdit: (member) => _showAddMemberForm(member: member),
       onDelete: _deleteMember,
-      onPrint: (member) => CardPdfService().generateMemberCard(member),
+      onPrint: (member) async {
+        final pdfData = await CardPdfService().generateMemberCard(member);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => PdfPreviewDialog(
+              pdfData: pdfData,
+              title: "Aperçu de la carte - ${member.fullName}",
+            ),
+          );
+        }
+      },
       horizontalController: _horizontalController,
     );
   }
@@ -471,16 +479,20 @@ class _MembersPageState extends State<MembersPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmation'),
-        content: Text('Voulez-vous vraiment supprimer ${member.fullName} ?'),
+        backgroundColor: context.surfaceColor,
+        title: Text('Confirmation', style: TextStyle(color: context.textColor)),
+        content: Text(
+          'Voulez-vous vraiment supprimer ${member.fullName} ?',
+          style: TextStyle(color: context.subtitleColor),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Annuler'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Supprimer'),
           ),
         ],

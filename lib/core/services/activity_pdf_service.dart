@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -170,6 +172,14 @@ class ActivityPdfService {
 
   Future<pw.MemoryImage?> _loadLogo() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final logoPath = prefs.getString('church_logo_path');
+      if (logoPath != null && logoPath.isNotEmpty) {
+        final file = File(logoPath);
+        if (await file.exists()) {
+          return pw.MemoryImage(await file.readAsBytes());
+        }
+      }
       final data = await rootBundle.load('assets/eglise.jpeg');
       return pw.MemoryImage(data.buffer.asUint8List());
     } catch (e) {

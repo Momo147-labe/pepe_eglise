@@ -37,7 +37,7 @@ class _MainLayoutState extends State<MainLayout> {
 
     Widget content = ColoredBox(
       color: context.surfaceHighlightColor,
-      child: IndexedStack(index: _currentIndex, children: _pages),
+      child: _pages[_currentIndex],
     );
 
     return Scaffold(

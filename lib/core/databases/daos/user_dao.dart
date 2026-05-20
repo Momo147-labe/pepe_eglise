@@ -40,4 +40,21 @@ class UserDao {
       whereArgs: [email],
     );
   }
+
+  Future<int> updateUser(UserModel user) async {
+    return await db.update(
+      UserSchema.tableName,
+      user.toMap(),
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+  }
+
+  Future<int> deleteUser(int id) async {
+    return await db.delete(
+      UserSchema.tableName,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

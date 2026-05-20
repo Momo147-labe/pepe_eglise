@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:eglise_labe/features/auth/pages/auth_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:eglise_labe/main.dart';
 
 class Sidebar extends StatelessWidget {
   final int currentIndex;
@@ -151,27 +153,35 @@ class _SidebarLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 240,
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        image: const DecorationImage(
-          image: AssetImage('assets/eglise.jpeg'),
-          fit: BoxFit.cover,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+    return ValueListenableBuilder<String?>(
+      valueListenable: logoNotifier,
+      builder: (context, logoPath, _) {
+        return Container(
+          height: 240,
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            image: logoPath != null && File(logoPath).existsSync()
+                ? DecorationImage(
+                    image: FileImage(File(logoPath)),
+                    fit: BoxFit.cover,
+                  )
+                : const DecorationImage(
+                    image: AssetImage('assets/eglise.jpeg'),
+                    fit: BoxFit.cover,
+                  ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Stack(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Stack(
           children: [
             Positioned.fill(
               child: Container(
@@ -295,7 +305,8 @@ class _SidebarLogo extends StatelessWidget {
         ),
       ),
     );
-  }
+  });
+}
 }
 
 class _SidebarItem extends StatelessWidget {

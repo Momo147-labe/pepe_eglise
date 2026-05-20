@@ -4,10 +4,7 @@ import 'package:eglise_labe/core/databases/database_helper.dart';
 import 'package:eglise_labe/core/models/activity_model.dart';
 import 'package:eglise_labe/core/models/attendance_model.dart';
 import 'package:eglise_labe/core/services/activity_pdf_service.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-import 'dart:io';
+import 'package:eglise_labe/features/dashboard/widgets/activity_form_dialog.dart';
 
 class ActivitiesPage extends StatefulWidget {
   const ActivitiesPage({super.key});
@@ -152,7 +149,10 @@ class _ActivitiesPageState extends State<ActivitiesPage>
             _buildHeaderAction(
               icon: Icons.add_rounded,
               label: "Nouvelle Activité",
-              onTap: () => _showAddActivityDialog(),
+              onTap: () => showDialog(
+                context: context,
+                builder: (_) => ActivityFormDialog(onSaved: _loadActivities),
+              ),
               color: AppColors.primaryOrange,
               textColor: Colors.white,
             ),
@@ -432,7 +432,13 @@ class _ActivitiesPageState extends State<ActivitiesPage>
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 20),
-                onPressed: () {},
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => ActivityFormDialog(
+                    activity: activity,
+                    onSaved: _loadActivities,
+                  ),
+                ),
                 color: Colors.black38,
               ),
             ],
@@ -478,214 +484,6 @@ class _ActivitiesPageState extends State<ActivitiesPage>
     );
   }
 
-  void _showAddActivityDialog() {
-    final nameCtrl = TextEditingController();
-    final typeCtrl = TextEditingController();
-    final heureCtrl = TextEditingController();
-    final freqCtrl = TextEditingController();
-    final leadCtrl = TextEditingController();
-    final locationCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    String? selectedImagePath;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: const Text("Nouvelle Activité"),
-          content: SizedBox(
-            width: 700,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      final XFile? image = await ImagePicker().pickImage(
-                        source: ImageSource.gallery,
-                      );
-                      if (image != null) {
-                        final file = File(image.path);
-                        final appDir = await getApplicationDocumentsDirectory();
-                        final fileName = path.basename(file.path);
-                        final savedImage = await file.copy(
-                          '${appDir.path}/$fileName',
-                        );
-                        setDialogState(
-                          () => selectedImagePath = savedImage.path,
-                        );
-                      }
-                    },
-                    child: Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: context.surfaceHighlightColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: context.borderColor),
-                        image: selectedImagePath != null
-                            ? DecorationImage(
-                                image: FileImage(File(selectedImagePath!)),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                      ),
-                      child: selectedImagePath == null
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.add_photo_alternate_rounded,
-                                  size: 40,
-                                  color: context.iconColor,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "Ajouter une image",
-                                  style: TextStyle(
-                                    color: context.subtitleColor,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Nom de l'activité",
-                          Icons.title_rounded,
-                          nameCtrl,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Type (ex: Culte)",
-                          Icons.category_rounded,
-                          typeCtrl,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Lieu",
-                          Icons.location_on_rounded,
-                          locationCtrl,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Heure",
-                          Icons.access_time_rounded,
-                          heureCtrl,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Fréquence",
-                          Icons.repeat_rounded,
-                          freqCtrl,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildControlledTextField(
-                          "Responsable",
-                          Icons.person_rounded,
-                          leadCtrl,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: descCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: "Description",
-                      prefixIcon: const Icon(
-                        Icons.description_rounded,
-                        size: 20,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: context.borderColor),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: context.borderColor),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.primaryOrange,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Annuler"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameCtrl.text.isEmpty) return;
-                final newActivity = ActivityModel(
-                  name: nameCtrl.text,
-                  type: typeCtrl.text.isNotEmpty ? typeCtrl.text : 'Général',
-                  freq: freqCtrl.text.isNotEmpty
-                      ? freqCtrl.text
-                      : 'Hebdomadaire',
-                  time: heureCtrl.text.isNotEmpty ? heureCtrl.text : '00:00',
-                  lead: leadCtrl.text.isNotEmpty
-                      ? leadCtrl.text
-                      : 'Non assigné',
-                  location: locationCtrl.text,
-                  description: descCtrl.text,
-                  imagePath: selectedImagePath,
-                );
-                final dao = await DatabaseHelper().activityDao;
-                await dao.insertActivity(newActivity);
-                _loadActivities();
-                if (context.mounted) Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryOrange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text("Créer l'activité"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showAttendanceDialog(ActivityModel activity) async {
     final memberDao = await DatabaseHelper().memberDao;
     final allMembers = await memberDao.getAllMembers();
@@ -697,123 +495,119 @@ class _ActivitiesPageState extends State<ActivitiesPage>
     }
 
     if (!context.mounted) return;
+    
+    String searchQuery = '';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: Text("Présences : ${activity.name}"),
-          content: SizedBox(
-            width: 600,
-            height: 500,
-            child: Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: "Rechercher un membre...",
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+        builder: (context, setDialogState) {
+          final filteredMembers = allMembers
+              .where((m) => m.fullName.toLowerCase().contains(searchQuery.toLowerCase()))
+              .toList();
+              
+          return AlertDialog(
+            backgroundColor: context.surfaceColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Text("Présences : ${activity.name}", style: TextStyle(color: context.textColor)),
+            content: SizedBox(
+              width: 600,
+              height: 500,
+              child: Column(
+                children: [
+                  TextField(
+                    onChanged: (val) {
+                      setDialogState(() {
+                        searchQuery = val;
+                      });
+                    },
+                    style: TextStyle(color: context.textColor),
+                    decoration: InputDecoration(
+                      hintText: "Rechercher un membre...",
+                      hintStyle: TextStyle(color: context.subtitleColor),
+                      prefixIcon: Icon(Icons.search, color: context.iconColor),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: context.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: context.borderColor),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: allMembers.length,
-                    itemBuilder: (context, index) {
-                      final member = allMembers[index];
-                      return ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(member.fullName),
-                        subtitle: Text("ID: LABE-00${member.id}"),
-                        trailing: Checkbox(
-                          value: attendanceMap[member.id!],
-                          onChanged: (val) {
-                            setDialogState(() {
-                              attendanceMap[member.id!] = val ?? false;
-                            });
-                          },
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filteredMembers.length,
+                      itemBuilder: (context, index) {
+                        final member = filteredMembers[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: context.surfaceHighlightColor,
+                            child: Icon(Icons.person, color: context.iconColor),
+                          ),
+                          title: Text(member.fullName, style: TextStyle(color: context.textColor)),
+                          subtitle: Text("ID: LABE-00${member.id}", style: TextStyle(color: context.subtitleColor)),
+                          trailing: Checkbox(
+                            value: attendanceMap[member.id!],
+                            onChanged: (val) {
+                              setDialogState(() {
+                                attendanceMap[member.id!] = val ?? false;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Annuler"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final dao = await DatabaseHelper().attendanceDao;
+                  String today = DateTime.now().toIso8601String().substring(0, 10);
+                  for (var member in allMembers) {
+                    if (member.id != null && attendanceMap[member.id!] == true) {
+                      await dao.insertAttendance(
+                        AttendanceModel(
+                          activityId: activity.id!,
+                          memberId: member.id!,
+                          date: today,
+                          status: 'Présent',
                         ),
                       );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Annuler"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final dao = await DatabaseHelper().attendanceDao;
-                String today = DateTime.now().toIso8601String().substring(
-                  0,
-                  10,
-                );
-                for (var member in allMembers) {
-                  if (member.id != null && attendanceMap[member.id!] == true) {
-                    await dao.insertAttendance(
-                      AttendanceModel(
-                        activityId: activity.id!,
-                        memberId: member.id!,
-                        date: today,
-                        status: 'Présent',
-                      ),
+                    }
+                  }
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Présences enregistrées")),
                     );
                   }
-                }
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Présences enregistrées")),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: const Text("Enregistrer"),
               ),
-              child: const Text("Enregistrer"),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildControlledTextField(
-    String label,
-    IconData icon,
-    TextEditingController controller,
-  ) {
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: context.borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: context.borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primaryOrange),
-        ),
-      ),
-    );
-  }
 }

@@ -4,18 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:eglise_labe/core/models/event_model.dart';
+import 'package:eglise_labe/core/models/finance_model.dart';
 
-class EventPdfService {
-  Future<void> generateEventReport(List<EventModel> events) async {
+class FinancePdfService {
+  Future<void> generateFinanceReport(List<FinanceModel> transactions, String title) async {
     final doc = pw.Document();
     final logoImage = await _loadLogo();
 
     doc.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
+        pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(15 * PdfPageFormat.mm),
-        header: (pw.Context context) => _buildHeader(logoImage),
+        header: (pw.Context context) => _buildHeader(logoImage, title),
         footer: (pw.Context context) => _buildFooter(context),
         build: (pw.Context context) => [
           pw.SizedBox(height: 10),
@@ -30,32 +30,24 @@ class EventPdfService {
             cellHeight: 30,
             cellAlignments: {
               0: pw.Alignment.centerLeft,
-              1: pw.Alignment.center,
-              2: pw.Alignment.centerLeft,
-              3: pw.Alignment.center,
-              4: pw.Alignment.centerRight,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.center,
+              3: pw.Alignment.centerRight,
             },
             data: <List<String>>[
-              <String>[
-                'Titre de l\'Événement',
-                'Date',
-                'Lieu',
-                'Fréquence',
-                'Budget (GNF)',
-              ],
-              ...events.map(
-                (e) => [
-                  _clean(e.title),
-                  e.date,
-                  _clean(e.location),
-                  _clean(e.frequency ?? 'Une fois'),
-                  _formatCurrency(e.budget ?? 0),
+              <String>['Date', 'Bénéficiaire / Source', 'Type', 'Montant'],
+              ...transactions.map(
+                (t) => [
+                  t.date,
+                  _clean(t.entity),
+                  _clean(t.type),
+                  t.amount,
                 ],
               ),
             ],
           ),
           pw.SizedBox(height: 20),
-          _buildSummary(events),
+          _buildSummary(transactions),
         ],
       ),
     );
@@ -65,7 +57,7 @@ class EventPdfService {
     );
   }
 
-  pw.Widget _buildHeader(pw.MemoryImage? logo) {
+  pw.Widget _buildHeader(pw.MemoryImage? logo, String title) {
     return pw.Column(
       children: [
         pw.Row(
@@ -83,7 +75,7 @@ class EventPdfService {
                   ),
                 ),
                 pw.Text(
-                  "Rapport du Calendrier des Événements",
+                  title,
                   style: const pw.TextStyle(fontSize: 12),
                 ),
                 pw.Text(
@@ -125,15 +117,18 @@ class EventPdfService {
     );
   }
 
-  pw.Widget _buildSummary(List<EventModel> events) {
-    double totalBudget = events.fold(
-      0,
-      (sum, item) => sum + (item.budget ?? 0),
-    );
-    int totalAttendees = events.fold(
-      0,
-      (sum, item) => sum + (item.expectedAttendees ?? 0),
-    );
+  pw.Widget _buildSummary(List<FinanceModel> transactions) {
+    double totalIn = 0;
+    double totalOut = 0;
+
+    for (var t in transactions) {
+      double amount = double.tryParse(t.amount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+      if (t.type.toLowerCase() == 'dépense') {
+        totalOut += amount;
+      } else {
+        totalIn += amount;
+      }
+    }
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
@@ -144,18 +139,15 @@ class EventPdfService {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
         children: [
-          _buildSummaryItem("Total Événements", events.length.toString()),
-          _buildSummaryItem(
-            "Budget Total",
-            "${_formatCurrency(totalBudget)} GNF",
-          ),
-          _buildSummaryItem("Participants Attendus", totalAttendees.toString()),
+          _buildSummaryItem("Total Entrées", "${totalIn.toStringAsFixed(0)} GNF", PdfColors.green700),
+          _buildSummaryItem("Total Sorties", "${totalOut.toStringAsFixed(0)} GNF", PdfColors.red700),
+          _buildSummaryItem("Solde Période", "${(totalIn - totalOut).toStringAsFixed(0)} GNF", PdfColors.blue700),
         ],
       ),
     );
   }
 
-  pw.Widget _buildSummaryItem(String label, String value) {
+  pw.Widget _buildSummaryItem(String label, String value, PdfColor valueColor) {
     return pw.Column(
       children: [
         pw.Text(
@@ -164,19 +156,10 @@ class EventPdfService {
         ),
         pw.Text(
           value,
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: valueColor),
         ),
       ],
     );
-  }
-
-  String _formatCurrency(double amount) {
-    return amount
-        .toStringAsFixed(0)
-        .replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]} ',
-        );
   }
 
   String _clean(String? s) {

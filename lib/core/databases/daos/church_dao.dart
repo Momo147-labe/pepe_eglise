@@ -36,9 +36,11 @@ class ChurchDao {
     if (maps.isEmpty) {
       return await db.insert(ChurchSchema.tableName, profile.toMap());
     } else {
+      final updateMap = profile.toMap();
+      updateMap.remove('id');
       return await db.update(
         ChurchSchema.tableName,
-        profile.toMap(),
+        updateMap,
         where: 'id = ?',
         whereArgs: [maps.first['id']],
       );

@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 
 class AnalyticsLineChart extends StatelessWidget {
-  const AnalyticsLineChart({super.key});
+  final List<Map<String, dynamic>>? monthlyTrend;
+
+  const AnalyticsLineChart({super.key, this.monthlyTrend});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: const Size(double.infinity, 200),
-      painter: _LineChartPainter(),
+      painter: _LineChartPainter(monthlyTrend: monthlyTrend ?? []),
     );
   }
 }
 
 class _LineChartPainter extends CustomPainter {
+  final List<Map<String, dynamic>> monthlyTrend;
+
+  _LineChartPainter({required this.monthlyTrend});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paintProfit = Paint()
@@ -28,10 +34,22 @@ class _LineChartPainter extends CustomPainter {
     final pathProfit = Path();
     final pathExpense = Path();
 
-    final List<double> profitData = [0.4, 0.6, 0.5, 0.8, 0.7, 0.9];
-    final List<double> expenseData = [0.3, 0.4, 0.6, 0.5, 0.8, 0.6];
+    List<double> profitData = [0.0];
+    List<double> expenseData = [0.0];
 
-    final stepX = size.width / (profitData.length - 1);
+    if (monthlyTrend.isNotEmpty) {
+      // Find max to scale
+      double maxVal = 1.0;
+      for (var m in monthlyTrend) {
+        if (m['income'] > maxVal) maxVal = m['income'] as double;
+        if (m['expense'] > maxVal) maxVal = m['expense'] as double;
+      }
+      
+      profitData = monthlyTrend.map((e) => (e['income'] as double) / maxVal).toList();
+      expenseData = monthlyTrend.map((e) => (e['expense'] as double) / maxVal).toList();
+    }
+
+    final stepX = profitData.length > 1 ? size.width / (profitData.length - 1) : size.width;
 
     // Draw grid
     final gridPaint = Paint()..color = Colors.black.withOpacity(0.05);

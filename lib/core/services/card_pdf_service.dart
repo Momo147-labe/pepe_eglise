@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -9,7 +10,7 @@ class CardPdfService {
   static const double cardWidth = 86 * PdfPageFormat.mm;
   static const double cardHeight = 40 * PdfPageFormat.mm;
 
-  Future<void> generateMemberCard(MemberModel member) async {
+  Future<Uint8List> generateMemberCard(MemberModel member) async {
     final doc = pw.Document();
 
     final logoImage = await _loadLogo();
@@ -24,20 +25,18 @@ class CardPdfService {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-    );
+    return doc.save();
   }
 
-  Future<void> generateAllMemberCards(List<MemberModel> members) async {
+  Future<Uint8List> generateAllMemberCards(List<MemberModel> members) async {
     final doc = pw.Document();
     final logoImage = await _loadLogo();
 
-    // 4 cards per page
-    for (var i = 0; i < members.length; i += 4) {
+    // 8 cards per page (2 columns x 4 rows)
+    for (var i = 0; i < members.length; i += 8) {
       final chunk = members.sublist(
         i,
-        (i + 4) > members.length ? members.length : (i + 4),
+        (i + 8) > members.length ? members.length : (i + 8),
       );
 
       final profileImages = <String, pw.MemoryImage?>{};
@@ -56,35 +55,39 @@ class CardPdfService {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     if (chunk.isNotEmpty)
-                      _buildCard(
-                        chunk[0],
-                        logoImage,
-                        profileImages[chunk[0].id.toString()],
-                      ),
+                      _buildCard(chunk[0], logoImage, profileImages[chunk[0].id.toString()]),
                     if (chunk.length > 1)
-                      _buildCard(
-                        chunk[1],
-                        logoImage,
-                        profileImages[chunk[1].id.toString()],
-                      ),
+                      _buildCard(chunk[1], logoImage, profileImages[chunk[1].id.toString()]),
                   ],
                 ),
-                pw.SizedBox(height: 10 * PdfPageFormat.mm),
+                pw.SizedBox(height: 5 * PdfPageFormat.mm),
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     if (chunk.length > 2)
-                      _buildCard(
-                        chunk[2],
-                        logoImage,
-                        profileImages[chunk[2].id.toString()],
-                      ),
+                      _buildCard(chunk[2], logoImage, profileImages[chunk[2].id.toString()]),
                     if (chunk.length > 3)
-                      _buildCard(
-                        chunk[3],
-                        logoImage,
-                        profileImages[chunk[3].id.toString()],
-                      ),
+                      _buildCard(chunk[3], logoImage, profileImages[chunk[3].id.toString()]),
+                  ],
+                ),
+                pw.SizedBox(height: 5 * PdfPageFormat.mm),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (chunk.length > 4)
+                      _buildCard(chunk[4], logoImage, profileImages[chunk[4].id.toString()]),
+                    if (chunk.length > 5)
+                      _buildCard(chunk[5], logoImage, profileImages[chunk[5].id.toString()]),
+                  ],
+                ),
+                pw.SizedBox(height: 5 * PdfPageFormat.mm),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (chunk.length > 6)
+                      _buildCard(chunk[6], logoImage, profileImages[chunk[6].id.toString()]),
+                    if (chunk.length > 7)
+                      _buildCard(chunk[7], logoImage, profileImages[chunk[7].id.toString()]),
                   ],
                 ),
               ],
@@ -94,9 +97,7 @@ class CardPdfService {
       );
     }
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => doc.save(),
-    );
+    return doc.save();
   }
 
   Future<void> exportMembersList(List<MemberModel> members) async {
@@ -546,6 +547,14 @@ class CardPdfService {
 
   Future<pw.MemoryImage?> _loadLogo() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final logoPath = prefs.getString('church_logo_path');
+      if (logoPath != null && logoPath.isNotEmpty) {
+        final file = File(logoPath);
+        if (await file.exists()) {
+          return pw.MemoryImage(await file.readAsBytes());
+        }
+      }
       final data = await rootBundle.load('assets/eglise.jpeg');
       return pw.MemoryImage(data.buffer.asUint8List());
     } catch (e) {

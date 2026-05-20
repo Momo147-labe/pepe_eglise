@@ -8,6 +8,7 @@ import 'package:eglise_labe/core/databases/database_helper.dart';
 import 'package:eglise_labe/features/dashboard/pages/main_layout.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+final ValueNotifier<String?> logoNotifier = ValueNotifier(null);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,7 @@ void main() async {
   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
   final bool isDarkMode = prefs.getBool('isDarkMode') ?? false;
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  logoNotifier.value = prefs.getString('church_logo_path');
 
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }

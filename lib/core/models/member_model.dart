@@ -13,6 +13,7 @@ class MemberModel {
   final String? imagePath;
   final String? quartier;
   final String? birthPlace;
+  final String? poste;
 
   MemberModel({
     this.id,
@@ -29,6 +30,7 @@ class MemberModel {
     this.imagePath,
     this.quartier,
     this.birthPlace,
+    this.poste,
   });
 
   Map<String, dynamic> toMap() {
@@ -66,6 +68,7 @@ class MemberModel {
       imagePath: map['image_path'],
       quartier: map['quartier'],
       birthPlace: map['birth_place'],
+      poste: map['poste'],
     );
   }
 }

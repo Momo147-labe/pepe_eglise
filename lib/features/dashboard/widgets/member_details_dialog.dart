@@ -6,6 +6,7 @@ import 'package:eglise_labe/core/databases/daos/finance_dao.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:eglise_labe/core/services/card_pdf_service.dart';
+import 'package:eglise_labe/features/dashboard/widgets/pdf_preview_dialog.dart';
 
 class MemberDetailsDialog extends StatelessWidget {
   final MemberModel member;
@@ -183,8 +184,16 @@ class MemberDetailsDialog extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        CardPdfService().generateMemberCard(member),
+                    onPressed: () async {
+                      final pdfData = await CardPdfService().generateMemberCard(member);
+                      showDialog(
+                        context: context,
+                        builder: (context) => PdfPreviewDialog(
+                          pdfData: pdfData,
+                          title: "Aperçu de la carte - ${member.fullName}",
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.print_rounded),
                     label: const Text("Imprimer la carte"),
                     style: OutlinedButton.styleFrom(

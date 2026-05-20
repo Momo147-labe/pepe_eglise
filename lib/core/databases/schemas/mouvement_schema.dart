@@ -20,6 +20,7 @@ class MouvementSchema {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       membre_id INTEGER NOT NULL,
       mouvement_id INTEGER NOT NULL,
+      poste TEXT DEFAULT 'Membre',
       FOREIGN KEY (membre_id) REFERENCES members (id) ON DELETE CASCADE,
       FOREIGN KEY (mouvement_id) REFERENCES $tableName ON DELETE CASCADE
     )

@@ -5,6 +5,11 @@ import 'package:eglise_labe/core/models/church_model.dart';
 import 'package:eglise_labe/core/models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:eglise_labe/main.dart';
+import 'dart:io';
+import 'package:path/path.dart' as p;
+import 'package:file_picker/file_picker.dart';
+import 'package:eglise_labe/core/databases/database_path.dart';
+import 'package:eglise_labe/features/dashboard/widgets/user_form_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -19,6 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = true;
   ChurchModel? _churchProfile;
   List<UserModel> _admins = [];
+  String _currentUserEmail = "";
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -53,6 +59,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
     final userDao = await DatabaseHelper().userDao;
     _admins = await userDao.getAllUsers();
+
+    final prefs = await SharedPreferences.getInstance();
+    _currentUserEmail = prefs.getString('userEmail') ?? '';
 
     setState(() {
       _isLoading = false;
@@ -91,6 +100,8 @@ class _SettingsPageState extends State<SettingsPage> {
           _buildUserManagement(),
           const SizedBox(height: 32),
           _buildSystemConfig(),
+          const SizedBox(height: 32),
+          _buildBackupRestore(),
           const SizedBox(height: 48),
           _buildFooter(),
         ],
@@ -127,26 +138,39 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              image: const DecorationImage(
-                image: AssetImage('assets/eglise.jpeg'),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: Colors.black.withOpacity(0.2),
-              ),
-              child: const Icon(
-                Icons.camera_alt_rounded,
-                color: Colors.white,
-                size: 30,
-              ),
+          GestureDetector(
+            onTap: _pickLogo,
+            child: ValueListenableBuilder<String?>(
+              valueListenable: logoNotifier,
+              builder: (context, logoPath, child) {
+                return Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    image: logoPath != null && logoPath.isNotEmpty && File(logoPath).existsSync()
+                        ? DecorationImage(
+                            image: FileImage(File(logoPath)),
+                            fit: BoxFit.cover,
+                          )
+                        : const DecorationImage(
+                            image: AssetImage('assets/eglise.jpeg'),
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: Colors.black.withOpacity(0.2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 32),
@@ -211,18 +235,14 @@ class _SettingsPageState extends State<SettingsPage> {
           ..._admins.map(
             (user) => Column(
               children: [
-                _buildAdminItem(
-                  user.fullName,
-                  user.role,
-                  false,
-                ), // Or determine if it's the current user
+                _buildAdminItem(user, user.email == _currentUserEmail),
                 const Divider(height: 32),
               ],
             ),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () => _showUserForm(),
             icon: const Icon(Icons.add_rounded),
             label: const Text("Ajouter un collaborateur"),
             style: OutlinedButton.styleFrom(
@@ -237,7 +257,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildAdminItem(String name, String role, bool isYou) {
+  Widget _buildAdminItem(UserModel user, bool isYou) {
     return Row(
       children: [
         const CircleAvatar(
@@ -252,10 +272,11 @@ class _SettingsPageState extends State<SettingsPage> {
             Row(
               children: [
                 Text(
-                  name,
-                  style: const TextStyle(
+                  user.fullName,
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    color: context.textColor,
                   ),
                 ),
                 if (isYou)
@@ -281,15 +302,15 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             Text(
-              role,
-              style: const TextStyle(color: Colors.black45, fontSize: 13),
+              user.role == 'admin' ? 'Administrateur' : 'Modérateur',
+              style: TextStyle(color: context.subtitleColor, fontSize: 13),
             ),
           ],
         ),
         const Spacer(),
         IconButton(
-          icon: const Icon(Icons.edit_outlined, size: 20),
-          onPressed: () {},
+          icon: Icon(Icons.edit_outlined, size: 20, color: context.iconColor),
+          onPressed: () => _showUserForm(user: user),
         ),
         IconButton(
           icon: const Icon(
@@ -297,7 +318,7 @@ class _SettingsPageState extends State<SettingsPage> {
             size: 20,
             color: Colors.redAccent,
           ),
-          onPressed: () {},
+          onPressed: () => _deleteUser(user, isYou),
         ),
       ],
     );
@@ -476,7 +497,11 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: context.textColor,
+          ),
         ),
         Text(
           value,
@@ -489,15 +514,331 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> _pickLogo() async {
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.image);
+      if (result != null && result.files.single.path != null) {
+        final pickedFile = File(result.files.single.path!);
+        final appDir = await getAppStorageDirectory();
+        final logoDir = Directory(p.join(appDir, 'logo'));
+        if (!await logoDir.exists()) {
+          await logoDir.create(recursive: true);
+        }
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final newPath = p.join(
+          logoDir.path,
+          'church_logo_$timestamp${p.extension(pickedFile.path)}',
+        );
+        await pickedFile.copy(newPath);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('church_logo_path', newPath);
+
+        // Update global notifier
+        logoNotifier.value = newPath;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Logo de l\'église mis à jour !')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du choix du logo : $e')),
+        );
+      }
+    }
+  }
+
+  void _showUserForm({UserModel? user}) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => UserFormDialog(user: user, onSaved: _loadData),
+    );
+    if (result == true) {
+      _loadData();
+    }
+  }
+
+  void _deleteUser(UserModel user, bool isYou) async {
+    if (isYou) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vous ne pouvez pas supprimer votre propre compte !"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.surfaceColor,
+        title: Text(
+          "Supprimer le collaborateur ?",
+          style: TextStyle(
+            color: context.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          "Êtes-vous sûr de vouloir supprimer ${user.fullName} ? Il n'aura plus accès à l'application.",
+          style: TextStyle(color: context.subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              "Annuler",
+              style: TextStyle(color: context.subtitleColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Supprimer",
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final userDao = await DatabaseHelper().userDao;
+      await userDao.deleteUser(user.id!);
+      _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Collaborateur supprimé avec succès"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur lors de la suppression : $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildBackupRestore() {
+    return _buildSectionCard(
+      title: "Sauvegarde & Restauration",
+      icon: Icons.backup_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Protégez vos données en créant des sauvegardes régulières ou en restaurant une sauvegarde existante.",
+            style: TextStyle(color: context.subtitleColor, fontSize: 14),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _backupDatabase,
+                icon: const Icon(Icons.download_rounded),
+                label: const Text("Créer une sauvegarde"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryOrange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _restoreDatabase,
+                icon: const Icon(Icons.upload_rounded),
+                label: const Text("Restaurer une sauvegarde"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _backupDatabase() async {
+    try {
+      final dbPath = await getDatabasePath();
+      final dbFile = File(dbPath);
+      if (!await dbFile.exists()) {
+        throw Exception("Fichier de base de données introuvable.");
+      }
+
+      final destinationDirectory = await FilePicker.getDirectoryPath();
+      if (destinationDirectory != null) {
+        final now = DateTime.now();
+        final timestamp =
+            "${now.year}${_twoDigits(now.month)}${_twoDigits(now.day)}_${_twoDigits(now.hour)}${_twoDigits(now.minute)}";
+        final backupFileName = "eglise_labe_backup_$timestamp.db";
+        final backupPath = p.join(destinationDirectory, backupFileName);
+
+        await dbFile.copy(backupPath);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Sauvegarde créée avec succès : $backupFileName"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur lors de la sauvegarde : $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  String _twoDigits(int n) => n >= 10 ? "$n" : "0$n";
+
+  Future<void> _restoreDatabase() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.surfaceColor,
+        title: Text(
+          "Confirmer la restauration ?",
+          style: TextStyle(
+            color: context.textColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          "Attention : restaurer une ancienne sauvegarde écrasera toutes vos données actuelles. Cette action est irréversible.",
+          style: TextStyle(color: context.subtitleColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              "Annuler",
+              style: TextStyle(color: context.subtitleColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Confirmer",
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final result = await FilePicker.pickFiles(type: FileType.any);
+
+      if (result != null && result.files.single.path != null) {
+        final pickedFile = File(result.files.single.path!);
+
+        // Basic validation (must have .db extension)
+        if (!pickedFile.path.endsWith('.db')) {
+          throw Exception("Le fichier doit avoir l'extension .db");
+        }
+
+        final dbHelper = DatabaseHelper();
+        // Close database connection
+        await dbHelper.closeDatabase();
+
+        final dbPath = await getDatabasePath();
+        // Overwrite
+        await pickedFile.copy(dbPath);
+
+        // Force reopen database
+        await dbHelper.database;
+
+        await _loadData();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Restauration effectuée avec succès !"),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur lors de la restauration : $e"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildFooter() {
     return Center(
       child: Column(
         children: [
-          Image.asset(
-            'assets/eglise.jpeg',
-            height: 40,
-            width: 40,
-          ), // Placeholder for logo
+          ValueListenableBuilder<String?>(
+            valueListenable: logoNotifier,
+            builder: (context, logoPath, _) {
+              return logoPath != null && logoPath.isNotEmpty && File(logoPath).existsSync()
+                  ? Image.file(
+                      File(logoPath),
+                      height: 40,
+                      width: 40,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.asset(
+                      'assets/eglise.jpeg',
+                      height: 40,
+                      width: 40,
+                      fit: BoxFit.cover,
+                    );
+            },
+          ),
           const SizedBox(height: 16),
           Text(
             "Version 1.0.0 (Build 20240501)",

@@ -3,7 +3,8 @@ import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:eglise_labe/core/databases/database_helper.dart';
 import 'package:eglise_labe/core/models/finance_model.dart';
-import 'package:eglise_labe/core/models/member_model.dart';
+import 'package:eglise_labe/features/dashboard/widgets/transaction_form_dialog.dart';
+import 'package:eglise_labe/core/services/finance_pdf_service.dart';
 
 class FinancesPage extends StatefulWidget {
   const FinancesPage({super.key});
@@ -25,6 +26,9 @@ class _FinancesPageState extends State<FinancesPage> {
   double _donationVariation = 0;
   List<Map<String, dynamic>> _monthlyTrend = [];
   bool _isLoading = true;
+
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _ledgerKey = GlobalKey();
 
   @override
   void initState() {
@@ -82,6 +86,7 @@ class _FinancesPageState extends State<FinancesPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
+          controller: _scrollController,
           padding: const EdgeInsets.all(32.0),
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight - 64),
@@ -94,7 +99,7 @@ class _FinancesPageState extends State<FinancesPage> {
                 const SizedBox(height: 32),
                 _buildChartsSection(),
                 const SizedBox(height: 32),
-                _buildTransactionLedger(),
+                Container(key: _ledgerKey, child: _buildTransactionLedger()),
               ],
             ),
           ),
@@ -133,15 +138,33 @@ class _FinancesPageState extends State<FinancesPage> {
           runSpacing: 12,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            _buildHeaderAction(Icons.download_rounded, "Rapport PDF", () {}),
+            _buildHeaderAction(
+              Icons.download_rounded,
+              "Rapport PDF",
+              () {
+                FinancePdfService().generateFinanceReport(_transactions, "Rapport Financier Complet");
+              },
+            ),
             _buildSpecialActionButton(
-              onPressed: () => _showTransactionForm(isExpense: false),
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => TransactionFormDialog(
+                  isExpense: false,
+                  onSaved: _loadTransactions,
+                ),
+              ),
               icon: Icons.add_circle_outline_rounded,
               label: "Nouvelle Entrée",
               color: Colors.green,
             ),
             _buildSpecialActionButton(
-              onPressed: () => _showTransactionForm(isExpense: true),
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => TransactionFormDialog(
+                  isExpense: true,
+                  onSaved: _loadTransactions,
+                ),
+              ),
               icon: Icons.remove_circle_outline_rounded,
               label: "Nouvelle Dépense",
               color: Colors.redAccent,
@@ -714,6 +737,7 @@ class _FinancesPageState extends State<FinancesPage> {
               ? Colors.amber
               : Colors.blue;
           return _buildTransactionRow(
+            t.id,
             t.date,
             t.entity,
             t.amount,
@@ -727,6 +751,7 @@ class _FinancesPageState extends State<FinancesPage> {
   }
 
   DataRow _buildTransactionRow(
+    int? id,
     String date,
     String entity,
     String amount,
@@ -814,12 +839,38 @@ class _FinancesPageState extends State<FinancesPage> {
             children: [
               IconButton(
                 icon: const Icon(Icons.print_rounded, size: 18),
-                onPressed: () {},
+                onPressed: () {
+                  // Print individual receipt? Unnecessary for now.
+                },
                 color: Colors.blueAccent.withOpacity(0.5),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                onPressed: () {},
+                onPressed: () async {
+                  if (id != null) {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: context.surfaceColor,
+                        title: Text("Supprimer", style: TextStyle(color: context.textColor)),
+                        content: Text("Voulez-vous supprimer cette transaction ?", style: TextStyle(color: context.subtitleColor)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Annuler")),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text("Supprimer"),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      final dao = await DatabaseHelper().financeDao;
+                      await dao.deleteTransaction(id);
+                      _loadTransactions();
+                    }
+                  }
+                },
                 color: Colors.redAccent.withOpacity(0.4),
               ),
             ],
@@ -829,267 +880,7 @@ class _FinancesPageState extends State<FinancesPage> {
     );
   }
 
-  void _showTransactionForm({required bool isExpense}) async {
-    final dao = await DatabaseHelper().financeDao;
-    final memberDao = await DatabaseHelper().memberDao;
-    final List<MemberModel> members = await memberDao.getAllMembers();
 
-    if (!mounted) return;
-
-    final entityCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    String selectedType = isExpense ? "Dépense" : "Dîme";
-    int? selectedMemberId;
-    bool isManualEntry = false;
-
-    final List<String> incomeTypes = ["Dîme", "Offrande", "Don", "Projet"];
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          backgroundColor: context.surfaceColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Container(
-            width: 550,
-            padding: const EdgeInsets.all(32),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isExpense
-                        ? "Nouvelle Dépense"
-                        : "Nouvelle Entrée Financière",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: context.textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildFormLabel("Type de Transaction"),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: context.surfaceHighlightColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.borderColor),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedType,
-                        isExpanded: true,
-                        dropdownColor: context.surfaceColor,
-                        items: (isExpense ? ["Dépense"] : incomeTypes)
-                            .map(
-                              (t) => DropdownMenuItem(
-                                value: t,
-                                child: Text(
-                                  t,
-                                  style: TextStyle(color: context.textColor),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) =>
-                            setDialogState(() => selectedType = val!),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildFormLabel("Source / Bénéficiaire"),
-                  if (!isManualEntry)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: context.surfaceHighlightColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: context.borderColor),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int?>(
-                          value: selectedMemberId,
-                          hint: Text(
-                            "Sélectionner un membre (optionnel)",
-                            style: TextStyle(color: context.subtitleColor),
-                          ),
-                          isExpanded: true,
-                          dropdownColor: context.surfaceColor,
-                          items: [
-                            const DropdownMenuItem<int?>(
-                              value: null,
-                              child: Text(
-                                "Saisir manuellement...",
-                                style: TextStyle(
-                                  color: AppColors.primaryOrange,
-                                ),
-                              ),
-                            ),
-                            ...members.map(
-                              (m) => DropdownMenuItem(
-                                value: m.id,
-                                child: Text(
-                                  m.fullName,
-                                  style: TextStyle(color: context.textColor),
-                                ),
-                              ),
-                            ),
-                          ],
-                          onChanged: (val) {
-                            if (val == null) {
-                              setDialogState(() => isManualEntry = true);
-                            } else {
-                              setDialogState(() {
-                                selectedMemberId = val;
-                                // Automatically pre-fill entity name for record keeping
-                                final m = members.firstWhere(
-                                  (e) => e.id == val,
-                                );
-                                entityCtrl.text = m.fullName;
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  if (isManualEntry)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: context.surfaceHighlightColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: context.borderColor),
-                            ),
-                            child: TextField(
-                              controller: entityCtrl,
-                              autofocus: true,
-                              decoration: const InputDecoration(
-                                hintText: "Nom du membre ou tiers",
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () => setDialogState(() {
-                            isManualEntry = false;
-                            selectedMemberId = null;
-                            entityCtrl.clear();
-                          }),
-                          icon: const Icon(Icons.list_alt_rounded),
-                          tooltip: "Choisir un membre enregistré",
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 16),
-
-                  _buildFormLabel("Montant (GNF)"),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: context.surfaceHighlightColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.borderColor),
-                    ),
-                    child: TextField(
-                      controller: amountCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        hintText: "Ex: 150000",
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildFormLabel("Description / Motif"),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: context.surfaceHighlightColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.borderColor),
-                    ),
-                    child: TextField(
-                      controller: descCtrl,
-                      maxLines: 2,
-                      decoration: const InputDecoration(
-                        hintText: "Détail de la transaction...",
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (amountCtrl.text.isEmpty) return;
-                        final transaction = FinanceModel(
-                          date: DateTime.now().toString().split(' ').first,
-                          entity: entityCtrl.text.isNotEmpty
-                              ? entityCtrl.text
-                              : 'Anonyme',
-                          amount: '${amountCtrl.text} GNF',
-                          type: selectedType,
-                          description: descCtrl.text,
-                          memberId: selectedMemberId,
-                        );
-                        await dao.insertTransaction(transaction);
-                        _loadTransactions();
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isExpense
-                            ? Colors.redAccent
-                            : Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        isExpense
-                            ? "Enregistrer la dépense"
-                            : "Enregistrer la transaction",
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 13,
-          color: context.subtitleColor,
-        ),
-      ),
-    );
-  }
 }
 
 class _Indicator extends StatelessWidget {

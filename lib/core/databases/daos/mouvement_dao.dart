@@ -55,11 +55,28 @@ class MouvementDao {
   }
 
   // Member Management in Mouvements
-  Future<int> addMemberToMouvement(int membreId, int mouvementId) async {
+  Future<int> addMemberToMouvement(int membreId, int mouvementId, {String poste = 'Membre'}) async {
+    // Delete any existing relation for this member to ensure they are only in one movement at a time
+    await db.delete(
+      MouvementSchema.memberRelationTable,
+      where: 'membre_id = ?',
+      whereArgs: [membreId],
+    );
+
     return await db.insert(MouvementSchema.memberRelationTable, {
       'membre_id': membreId,
       'mouvement_id': mouvementId,
+      'poste': poste,
     });
+  }
+
+  Future<int> updateMemberPosteInMouvement(int membreId, int mouvementId, String newPoste) async {
+    return await db.update(
+      MouvementSchema.memberRelationTable,
+      {'poste': newPoste},
+      where: 'membre_id = ? AND mouvement_id = ?',
+      whereArgs: [membreId, mouvementId],
+    );
   }
 
   Future<int> removeMemberFromMouvement(int membreId, int mouvementId) async {
@@ -73,7 +90,7 @@ class MouvementDao {
   Future<List<MemberModel>> getMouvementMembers(int mouvementId) async {
     final List<Map<String, dynamic>> maps = await db.rawQuery(
       '''
-      SELECT m.* FROM ${MemberSchema.tableName} m
+      SELECT m.*, mr.poste FROM ${MemberSchema.tableName} m
       JOIN ${MouvementSchema.memberRelationTable} mr ON m.id = mr.membre_id
       WHERE mr.mouvement_id = ?
     ''',

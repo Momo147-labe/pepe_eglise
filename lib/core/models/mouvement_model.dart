@@ -46,15 +46,22 @@ class MouvementMemberModel {
   final int? id;
   final int membreId;
   final int mouvementId;
+  final String poste;
 
   MouvementMemberModel({
     this.id,
     required this.membreId,
     required this.mouvementId,
+    this.poste = 'Membre',
   });
 
   Map<String, dynamic> toMap() {
-    return {'id': id, 'membre_id': membreId, 'mouvement_id': mouvementId};
+    return {
+      'id': id,
+      'membre_id': membreId,
+      'mouvement_id': mouvementId,
+      'poste': poste,
+    };
   }
 
   factory MouvementMemberModel.fromMap(Map<String, dynamic> map) {
@@ -62,6 +69,7 @@ class MouvementMemberModel {
       id: map['id'],
       membreId: map['membre_id'],
       mouvementId: map['mouvement_id'],
+      poste: map['poste'] ?? 'Membre',
     );
   }
 }

@@ -8,6 +8,9 @@ import 'package:eglise_labe/core/models/member_model.dart';
 import 'package:eglise_labe/core/models/finance_model.dart';
 import 'package:eglise_labe/core/models/activity_model.dart';
 import 'package:eglise_labe/core/widgets/typewriter_text.dart';
+import 'package:eglise_labe/features/dashboard/widgets/activity_form_dialog.dart';
+import 'package:eglise_labe/features/dashboard/widgets/member_form_dialog.dart';
+import 'package:eglise_labe/features/dashboard/widgets/transaction_form_dialog.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -24,6 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
   double _totalExpenses = 0;
   int _activityCount = 0;
   int _mouvementCount = 0;
+  List<Map<String, dynamic>> _monthlyTrend = [];
   bool _isLoading = true;
 
   List<MemberModel> _recentMembers = [];
@@ -56,6 +60,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final recentMembers = await memberDao.getRecentMembers(5);
     final recentTransactions = await financeDao.getRecentTransactions(5);
     final recentActivities = await activityDao.getRecentActivities(3);
+    final trend = await financeDao.getMonthlyTrend(6);
 
     if (mounted) {
       setState(() {
@@ -69,6 +74,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _recentMembers = recentMembers;
         _recentTransactions = recentTransactions;
         _recentActivities = recentActivities;
+        _monthlyTrend = trend;
         _isLoading = false;
       });
     }
@@ -214,19 +220,37 @@ class _DashboardPageState extends State<DashboardPage> {
           icon: Icons.person_add_rounded,
           label: "Ajouter Membre",
           color: Colors.blue,
-          onTap: () {},
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => MemberFormDialog(onSaved: _loadStats),
+            );
+          },
         ),
         _QuickActionButton(
           icon: Icons.account_balance_wallet_rounded,
           label: "Ajouter Offrande",
           color: Colors.green,
-          onTap: () {},
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => TransactionFormDialog(
+                isExpense: false,
+                onSaved: _loadStats,
+              ),
+            );
+          },
         ),
         _QuickActionButton(
           icon: Icons.event_available_rounded,
           label: "Programmer Activité",
           color: Colors.purple,
-          onTap: () {},
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => ActivityFormDialog(onSaved: _loadStats),
+            );
+          },
         ),
       ],
     );
@@ -361,8 +385,7 @@ class _DashboardPageState extends State<DashboardPage> {
             title: "Revenus Mensuels (Dîmes + Offrandes)",
             height: 350,
             child: AnalyticsLineChart(
-              // Assuming AnalyticsLineChart can take data if needed,
-              // for now using its internal mock.
+              monthlyTrend: _monthlyTrend,
             ),
           ),
         ),
