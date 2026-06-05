@@ -29,9 +29,9 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
   final quartierCtrl = TextEditingController();
   final conjointCtrl = TextEditingController();
   final childrenCountCtrl = TextEditingController(text: '0');
-  final joiningYearCtrl = TextEditingController(
-    text: DateTime.now().year.toString(),
-  );
+  final pereCtrl = TextEditingController();
+  final mereCtrl = TextEditingController();
+  final professionCtrl = TextEditingController();
   final customGroupeCtrl = TextEditingController();
 
   String selectedGender = 'M';
@@ -40,6 +40,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
   String selectedStatus = 'Actif';
   bool isCustomGroup = false;
   DateTime? selectedBirthDate;
+  DateTime? selectedJoinedAt;
   XFile? pickedImage;
 
   List<String> groupOptions = ['Autre...'];
@@ -89,12 +90,14 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       lieuNaissanceCtrl.text = m.birthPlace ?? '';
       quartierCtrl.text = m.quartier ?? '';
       childrenCountCtrl.text = (m.childrenCount ?? 0).toString();
-      joiningYearCtrl.text =
-          (m.joiningYear ??
-                  (m.joinedAt.length >= 4
-                      ? int.tryParse(m.joinedAt.substring(0, 4))
-                      : DateTime.now().year))
-              .toString();
+      pereCtrl.text = m.pere ?? '';
+      mereCtrl.text = m.mere ?? '';
+      professionCtrl.text = m.profession ?? '';
+      
+      if (m.joinedAt.length >= 10) {
+        selectedJoinedAt = DateTime.tryParse(m.joinedAt);
+      }
+      
       if (m.birthDate != null) {
         selectedBirthDate = DateTime.tryParse(m.birthDate!);
       }
@@ -113,6 +116,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       }
     } else {
       selectedGroup = '👥 Jeunesse';
+      selectedJoinedAt = DateTime.now();
     }
 
     _loadMouvements();
@@ -167,7 +171,9 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
     quartierCtrl.dispose();
     conjointCtrl.dispose();
     childrenCountCtrl.dispose();
-    joiningYearCtrl.dispose();
+    pereCtrl.dispose();
+    mereCtrl.dispose();
+    professionCtrl.dispose();
     customGroupeCtrl.dispose();
     super.dispose();
   }
@@ -563,10 +569,54 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildFormTextField(
-                          "Année d'adhésion",
-                          "Ex: 2020",
-                          joiningYearCtrl,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Date d'adhésion",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.subtitleColor,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: _selectJoinedDate,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 11,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: context.borderColor,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      selectedJoinedAt == null
+                                          ? "Choisir"
+                                          : DateFormat('dd/MM/yyyy').format(selectedJoinedAt!),
+                                      style: TextStyle(
+                                        color: selectedJoinedAt == null
+                                            ? context.iconColor.withOpacity(0.5)
+                                            : context.textColor,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Icon(
+                                      Icons.calendar_today,
+                                      size: 16,
+                                      color: context.iconColor,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -744,6 +794,20 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
     }
   }
 
+  Future<void> _selectJoinedDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedJoinedAt ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedJoinedAt = picked;
+      });
+    }
+  }
+
   Future<void> _saveMember() async {
     final fullName = "${nomCtrl.text} ${prenomCtrl.text}".trim();
     if (fullName.isEmpty || phoneCtrl.text.isEmpty) return;
@@ -782,13 +846,16 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         groupName: groupName,
         maritalStatus: selectedMaritalStatus,
         memberStatus: selectedStatus,
-        joinedAt: DateTime.now().toIso8601String(),
+        joinedAt: selectedJoinedAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
         birthDate: selectedBirthDate?.toIso8601String(),
         birthPlace: lieuNaissanceCtrl.text,
-        joiningYear: int.tryParse(joiningYearCtrl.text),
+        joiningYear: selectedJoinedAt?.year ?? DateTime.now().year,
         childrenCount: int.tryParse(childrenCountCtrl.text),
         imagePath: finalImagePath,
         quartier: quartierCtrl.text,
+        pere: pereCtrl.text,
+        mere: mereCtrl.text,
+        profession: professionCtrl.text,
       );
       final newId = await dao.insertMember(newMember);
 
@@ -806,13 +873,16 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         groupName: groupName,
         maritalStatus: selectedMaritalStatus,
         memberStatus: selectedStatus,
-        joinedAt: widget.member!.joinedAt,
+        joinedAt: selectedJoinedAt?.toIso8601String() ?? widget.member!.joinedAt,
         birthDate: selectedBirthDate?.toIso8601String(),
         birthPlace: lieuNaissanceCtrl.text,
-        joiningYear: int.tryParse(joiningYearCtrl.text),
+        joiningYear: selectedJoinedAt?.year ?? widget.member!.joiningYear,
         childrenCount: int.tryParse(childrenCountCtrl.text),
         imagePath: finalImagePath,
         quartier: quartierCtrl.text,
+        pere: pereCtrl.text,
+        mere: mereCtrl.text,
+        profession: professionCtrl.text,
       );
       await dao.updateMember(updatedMember);
 

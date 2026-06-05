@@ -9,6 +9,7 @@ class MembersTable extends StatelessWidget {
   final Function(MemberModel) onEdit;
   final Function(MemberModel) onDelete;
   final Function(MemberModel) onPrint;
+  final Function(MemberModel)? onPrintBaptism;
   final ScrollController horizontalController;
 
   const MembersTable({
@@ -18,6 +19,7 @@ class MembersTable extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onPrint,
+    this.onPrintBaptism,
     required this.horizontalController,
   });
 
@@ -343,6 +345,13 @@ class MembersTable extends StatelessWidget {
                 color: AppColors.primaryOrange,
                 tooltip: "Imprimer Carte",
               ),
+              if (onPrintBaptism != null)
+                IconButton(
+                  icon: const Icon(Icons.water_drop_outlined, size: 20),
+                  onPressed: () => onPrintBaptism!(member),
+                  color: Colors.blue,
+                  tooltip: "Certificat de Baptême",
+                ),
               IconButton(
                 icon: const Icon(Icons.delete_outline_rounded, size: 20),
                 onPressed: () => onDelete(member),

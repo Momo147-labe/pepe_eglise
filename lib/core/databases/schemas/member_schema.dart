@@ -17,7 +17,10 @@ class MemberSchema {
       children_count INTEGER,
       image_path TEXT,
       quartier TEXT,
-      birth_place TEXT
+      birth_place TEXT,
+      pere TEXT,
+      mere TEXT,
+      profession TEXT
     )
   ''';
 }

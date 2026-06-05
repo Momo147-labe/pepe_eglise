@@ -11,6 +11,7 @@ import 'package:eglise_labe/core/widgets/typewriter_text.dart';
 import 'package:eglise_labe/features/dashboard/widgets/activity_form_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/member_form_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/transaction_form_dialog.dart';
+import 'package:eglise_labe/features/dashboard/widgets/mouvement_local_tree.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -33,6 +34,7 @@ class _DashboardPageState extends State<DashboardPage> {
   List<MemberModel> _recentMembers = [];
   List<FinanceModel> _recentTransactions = [];
   List<ActivityModel> _recentActivities = [];
+  List<MemberModel> _commissionLocaleMembers = [];
 
   @override
   void initState() {
@@ -62,6 +64,18 @@ class _DashboardPageState extends State<DashboardPage> {
     final recentActivities = await activityDao.getRecentActivities(3);
     final trend = await financeDao.getMonthlyTrend(6);
 
+    List<MemberModel> commissionMembers = [];
+    final allMouvements = await mouvementDao.getAllMouvements();
+    final commission = allMouvements
+        .where((m) => m.nom == MouvementLocalTree.commissionLocaleName)
+        .toList();
+    if (commission.isNotEmpty && commission.first.id != null) {
+      final raw = await mouvementDao.getMouvementMembers(commission.first.id!);
+      commissionMembers = MouvementLocalTree.sortByPoste(
+        raw.where((m) => m.poste != null && m.poste != 'Membre').toList(),
+      );
+    }
+
     if (mounted) {
       setState(() {
         _totalMembers = totalMembers;
@@ -74,6 +88,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _recentMembers = recentMembers;
         _recentTransactions = recentTransactions;
         _recentActivities = recentActivities;
+        _commissionLocaleMembers = commissionMembers;
         _monthlyTrend = trend;
         _isLoading = false;
       });
@@ -90,9 +105,14 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _buildHeader(),
           const SizedBox(height: 32),
-          _buildQuickActions(),
-          const SizedBox(height: 32),
+         // _buildQuickActions(),
+         // const SizedBox(height: 32),
           _buildStatsGrid(),
+          const SizedBox(height: 32),
+          MouvementLocalTree(
+            members: _commissionLocaleMembers,
+            isLoading: _isLoading,
+          ),
           const SizedBox(height: 32),
           _buildAlertsSection(),
           const SizedBox(height: 32),

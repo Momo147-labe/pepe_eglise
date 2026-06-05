@@ -7,6 +7,7 @@ import 'package:eglise_labe/features/dashboard/widgets/member_form_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/member_details_dialog.dart';
 import 'package:eglise_labe/features/dashboard/widgets/members_table.dart';
 import 'package:eglise_labe/core/services/card_pdf_service.dart';
+import 'package:eglise_labe/core/services/baptism_certificate_pdf_service.dart';
 import 'package:eglise_labe/features/dashboard/widgets/pdf_preview_dialog.dart';
 
 class MembersPage extends StatefulWidget {
@@ -438,6 +439,18 @@ class _MembersPageState extends State<MembersPage> {
             builder: (context) => PdfPreviewDialog(
               pdfData: pdfData,
               title: "Aperçu de la carte - ${member.fullName}",
+            ),
+          );
+        }
+      },
+      onPrintBaptism: (member) async {
+        final pdfData = await BaptismCertificatePdfService().generateCertificate(member);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => PdfPreviewDialog(
+              pdfData: pdfData,
+              title: "Certificat de Baptême - ${member.fullName}",
             ),
           );
         }
