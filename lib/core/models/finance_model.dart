@@ -6,6 +6,8 @@ class FinanceModel {
   final String type;
   final String description;
   final int? memberId;
+  final String? paymentMethod;
+  final String? category;
 
   FinanceModel({
     this.id,
@@ -15,6 +17,8 @@ class FinanceModel {
     required this.type,
     required this.description,
     this.memberId,
+    this.paymentMethod,
+    this.category,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +30,8 @@ class FinanceModel {
       'type': type,
       'description': description,
       'member_id': memberId,
+      'payment_method': paymentMethod,
+      'category': category,
     };
   }
 
@@ -38,6 +44,8 @@ class FinanceModel {
       type: map['type'],
       description: map['description'],
       memberId: map['member_id'],
+      paymentMethod: map['payment_method'],
+      category: map['category'],
     );
   }
 }

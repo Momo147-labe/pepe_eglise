@@ -10,7 +10,9 @@ class FinanceSchema {
       amount TEXT NOT NULL,
       type TEXT NOT NULL,
       description TEXT NOT NULL,
-      member_id INTEGER
+      member_id INTEGER,
+      payment_method TEXT,
+      category TEXT
     )
   ''';
 }

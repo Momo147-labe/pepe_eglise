@@ -43,27 +43,89 @@ class _AuthPageState extends State<AuthPage> {
                 const Expanded(flex: 1, child: _HeaderIllustration()),
               Expanded(
                 flex: 1,
-                child: Container(
-                  color: context.sidebarColor,
-                  child: SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
+                child: Stack(
+                  children: [
+                    // Subtle glowing background orbs
+                    Positioned(
+                      top: -100,
+                      right: -100,
+                      child: Container(
+                        width: 300,
+                        height: 300,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryOrange.withValues(alpha: 0.12),
+                        ),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                          child: Container(color: Colors.transparent),
+                        ),
                       ),
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: constraints.maxWidth * 0.08,
-                            vertical: 40,
+                    ),
+                    Positioned(
+                      bottom: -150,
+                      left: -100,
+                      child: Container(
+                        width: 400,
+                        height: 400,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.purple.withValues(alpha: 0.08),
+                        ),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+                          child: Container(color: Colors.transparent),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      color: context.sidebarColor.withValues(alpha: 0.4),
+                    ),
+                    // Form Content
+                    Positioned.fill(
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
                           ),
-                          child: _PersistentAuthContent(
-                            mode: _mode,
-                            onModeChange: _setMode,
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: constraints.maxWidth * 0.05,
+                                vertical: 40,
+                              ),
+                              child: Container(
+                                constraints: const BoxConstraints(maxWidth: 460),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.04),
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 15),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 48,
+                                ),
+                                child: _PersistentAuthContent(
+                                  mode: _mode,
+                                  onModeChange: _setMode,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -105,7 +167,6 @@ class _PersistentAuthContent extends StatelessWidget {
       },
       child: Container(
         key: ValueKey(mode),
-        constraints: const BoxConstraints(maxWidth: 450),
         child: _buildForm(context),
       ),
     );
@@ -198,54 +259,72 @@ class _LoginFormState extends State<_LoginForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Connexion", style: _getTitleStyle(context)),
+        _buildGradientTitle("Connexion"),
         const SizedBox(height: 12),
         Text(
           "Gestion administrative simplifiée pour votre église",
           style: _getSubtitleStyle(context),
         ),
-        const SizedBox(height: 48),
-        AuthTextField(label: "Adresse e-mail", controller: _emailController),
-        const SizedBox(height: 28),
+        const SizedBox(height: 40),
+        AuthTextField(
+          label: "Adresse e-mail",
+          controller: _emailController,
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: 24),
         AuthTextField(
           label: "Mot de passe",
           isPassword: true,
           controller: _passwordController,
+          prefixIcon: Icons.lock_outline_rounded,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-              height: 24,
-              width: 24,
-              child: Checkbox(
-                value: _rememberMe,
-                onChanged: (value) {
-                  setState(() => _rememberMe = value ?? false);
-                },
-                activeColor: AppColors.primaryOrange,
-                side: const BorderSide(color: Colors.white24),
-              ),
+            Row(
+              children: [
+                SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: Checkbox(
+                    value: _rememberMe,
+                    onChanged: (value) {
+                      setState(() => _rememberMe = value ?? false);
+                    },
+                    activeColor: AppColors.primaryOrange,
+                    side: const BorderSide(color: Colors.white30),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  "Se souvenir",
+                  style: TextStyle(color: Colors.white60, fontSize: 13),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Text(
-              "Se souvenir de moi",
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            TextButton(
+              onPressed: () => widget.onModeChange(AuthMode.forgotPassword),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                "Mot de passe oublié ?",
+                style: TextStyle(
+                  color: AppColors.primaryOrange,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => widget.onModeChange(AuthMode.forgotPassword),
-            child: const Text(
-              "Mot de passe oublié ?",
-              style: TextStyle(color: AppColors.primaryOrange),
-            ),
-          ),
-        ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : AuthButton(text: "Se connecter", onPressed: _handleLogin),
@@ -254,9 +333,9 @@ class _LoginFormState extends State<_LoginForm> {
           child: Wrap(
             alignment: WrapAlignment.center,
             children: [
-              Text(
+              const Text(
                 "Nouveau ici ? ",
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: Colors.white54, fontSize: 14),
               ),
               GestureDetector(
                 onTap: () => widget.onModeChange(AuthMode.register),
@@ -265,6 +344,7 @@ class _LoginFormState extends State<_LoginForm> {
                   style: TextStyle(
                     color: AppColors.primaryOrange,
                     fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -359,43 +439,57 @@ class _RegisterFormState extends State<_RegisterForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Inscription", style: _getTitleStyle(context)),
+        _buildGradientTitle("Inscription"),
         const SizedBox(height: 12),
         Text(
           "Créez votre compte pour commencer la gestion de votre église",
           style: _getSubtitleStyle(context),
         ),
-        const SizedBox(height: 48),
-        AuthTextField(label: "Nom complet", controller: _nameController),
-        const SizedBox(height: 24),
-        AuthTextField(label: "Adresse e-mail", controller: _emailController),
-        const SizedBox(height: 24),
-        AuthTextField(label: "Téléphone", controller: _phoneController),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
+        AuthTextField(
+          label: "Nom complet",
+          controller: _nameController,
+          prefixIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: 20),
+        AuthTextField(
+          label: "Adresse e-mail",
+          controller: _emailController,
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: 20),
+        AuthTextField(
+          label: "Téléphone",
+          controller: _phoneController,
+          prefixIcon: Icons.phone_android_rounded,
+        ),
+        const SizedBox(height: 20),
         AuthTextField(
           label: "Mot de passe",
           isPassword: true,
           controller: _passwordController,
+          prefixIcon: Icons.lock_outline_rounded,
         ),
-        const SizedBox(height: 48),
+        const SizedBox(height: 36),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : AuthButton(text: "Créer le compte", onPressed: _handleRegister),
-        const SizedBox(height: 32),
+        const SizedBox(height: 28),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            const Text(
               "Déjà un compte ? ",
-              style: const TextStyle(color: Colors.white70),
+              style: TextStyle(color: Colors.white54, fontSize: 14),
             ),
-            TextButton(
-              onPressed: () => widget.onModeChange(AuthMode.login),
+            GestureDetector(
+              onTap: () => widget.onModeChange(AuthMode.login),
               child: const Text(
                 "Se connecter",
                 style: TextStyle(
                   color: AppColors.primaryOrange,
                   fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
             ),
@@ -478,34 +572,43 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Récupération", style: _getTitleStyle(context)),
+        _buildGradientTitle("Récupération"),
         const SizedBox(height: 12),
         Text(
           "Entrez votre e-mail et votre nouveau mot de passe pour le réinitialiser",
           style: _getSubtitleStyle(context),
         ),
-        const SizedBox(height: 48),
-        AuthTextField(label: "Adresse e-mail", controller: _emailController),
-        const SizedBox(height: 24),
+        const SizedBox(height: 36),
+        AuthTextField(
+          label: "Adresse e-mail",
+          controller: _emailController,
+          prefixIcon: Icons.mail_outline_rounded,
+        ),
+        const SizedBox(height: 20),
         AuthTextField(
           label: "Nouveau mot de passe",
           isPassword: true,
           controller: _passwordController,
+          prefixIcon: Icons.lock_reset_rounded,
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
         _isLoading
             ? const Center(child: CircularProgressIndicator())
             : AuthButton(
                 text: "Réinitialiser",
                 onPressed: _handleResetPassword,
               ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 28),
         Center(
           child: TextButton(
             onPressed: () => widget.onModeChange(AuthMode.login),
-            child: Text(
+            child: const Text(
               "Retour à la connexion",
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -514,16 +617,27 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
   }
 }
 
-TextStyle _getTitleStyle(BuildContext context) => const TextStyle(
-  color: Colors.white,
-  fontSize: 48,
-  fontWeight: FontWeight.bold,
-  letterSpacing: -1,
-  fontFamily: 'serif',
-);
+Widget _buildGradientTitle(String text) {
+  return ShaderMask(
+    shaderCallback: (bounds) => const LinearGradient(
+      colors: [Colors.white, Color(0xFFFFB366)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ).createShader(bounds),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 38,
+        fontWeight: FontWeight.bold,
+        letterSpacing: -0.5,
+      ),
+    ),
+  );
+}
 
 TextStyle _getSubtitleStyle(BuildContext context) =>
-    const TextStyle(color: Colors.white70, fontSize: 18, height: 1.5);
+    const TextStyle(color: Colors.white60, fontSize: 15, height: 1.5);
 
 class _HeaderIllustration extends StatefulWidget {
   const _HeaderIllustration();
@@ -550,75 +664,94 @@ class _HeaderIllustrationState extends State<_HeaderIllustration> {
 
   @override
   Widget build(BuildContext context) {
+    final hasCustomLogo = _logoPath != null && File(_logoPath!).existsSync();
+
     return Stack(
       children: [
         Container(
-          decoration: BoxDecoration(
-            image: _logoPath != null && File(_logoPath!).existsSync()
-                ? DecorationImage(
-                    image: FileImage(File(_logoPath!)),
-                    fit: BoxFit.cover,
-                  )
-                : const DecorationImage(
-                    image: AssetImage('assets/eglise.jpeg'),
-                    fit: BoxFit.cover,
-                  ),
+          color: AppColors.backgroundDark,
+          child: const SizedBox.expand(
+            child: Image(
+              image: AssetImage('assets/eglise.jpeg'),
+              fit: BoxFit.fitHeight,
+              alignment: Alignment.center,
+            ),
           ),
         ),
-        Container(color: AppColors.backgroundDark.withOpacity(0.4)),
+        Container(color: AppColors.backgroundDark.withValues(alpha: 0.45)),
         Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 30,
+                      horizontal: 48,
+                      vertical: 40,
                     ),
                     decoration: BoxDecoration(
-                      color: context.surfaceColor.withOpacity(0.1),
+                      color: context.surfaceColor.withValues(alpha: 0.12),
                       border: Border.all(
-                        color: context.borderColor.withOpacity(0.2),
-                        width: 1,
+                        color: context.borderColor.withValues(alpha: 0.15),
+                        width: 1.5,
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.church_outlined,
-                          size: 70,
-                          color: Colors.white,
+                        Container(
+                          width: 96,
+                          height: 96,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 1,
+                            ),
+                          ),
+                          child: hasCustomLogo
+                              ? ClipOval(
+                                  child: Image.file(
+                                    File(_logoPath!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.church_outlined,
+                                  size: 48,
+                                  color: Colors.white,
+                                ),
                         ),
-                        const SizedBox(height: 20),
-                        Container(height: 1, width: 40, color: Colors.white24),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
+                        Container(height: 1, width: 60, color: Colors.white24),
+                        const SizedBox(height: 24),
                         RichText(
                           textAlign: TextAlign.center,
-                          text: TextSpan(
+                          text: const TextSpan(
                             children: [
                               TextSpan(
                                 text: "PROTESTANTE",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w300,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
                                   color: Colors.white70,
-                                  letterSpacing: 4,
+                                  letterSpacing: 6,
                                 ),
                               ),
                               TextSpan(
                                 text: "\nEVANGELIQUE DE LABE",
-                                style: const TextStyle(
-                                  fontSize: 32,
+                                style: TextStyle(
+                                  fontSize: 28,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.white,
-                                  letterSpacing: 2,
-                                  height: 1.2,
+                                  letterSpacing: 1.5,
+                                  height: 1.3,
                                 ),
                               ),
                             ],

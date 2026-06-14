@@ -31,9 +31,9 @@ class BaptismCertificatePdfService {
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     if (logoImage != null)
-                      pw.Image(logoImage, width: 80, height: 80)
+                      pw.Image(logoImage, width: 120, height: 120)
                     else
-                      pw.SizedBox(width: 80, height: 80),
+                      pw.SizedBox(width: 120, height: 120),
                     
                     pw.Expanded(
                       child: pw.Column(
@@ -135,21 +135,34 @@ class BaptismCertificatePdfService {
                           children: [
                             pw.TextSpan(text: "Né le "),
                             pw.TextSpan(
-                              text: member.birthDate?.substring(0, 10) ?? "...........................",
+                              text: (member.birthDate != null ? "${member.birthDate!.substring(0, 10)} " : "").padRight(27, '.'),
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
                             pw.TextSpan(text: " à "),
                             pw.TextSpan(
-                              text: member.birthPlace ?? "........................................",
+                              text: (member.birthPlace?.isNotEmpty == true ? "${member.birthPlace} " : "").padRight(40, '.'),
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
                           ],
                         ),
                       ),
                       pw.SizedBox(height: 10),
-                      pw.Text(
-                        "Fils de ................................................................ et de ................................................................",
-                        style: pw.TextStyle(fontSize: 14),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          style: pw.TextStyle(fontSize: 14, lineSpacing: 5),
+                          children: [
+                            pw.TextSpan(text: member.gender == 'F' ? "Fille de " : "Fils de "),
+                            pw.TextSpan(
+                              text: (member.pere?.isNotEmpty == true ? "${member.pere} " : "").padRight(64, '.'),
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            ),
+                            pw.TextSpan(text: " et de "),
+                            pw.TextSpan(
+                              text: (member.mere?.isNotEmpty == true ? "${member.mere} " : "").padRight(64, '.'),
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       pw.SizedBox(height: 10),
                       pw.RichText(
@@ -158,7 +171,7 @@ class BaptismCertificatePdfService {
                           children: [
                             pw.TextSpan(text: "Domiciliés au quartier de : "),
                             pw.TextSpan(
-                              text: member.quartier ?? "........................................",
+                              text: (member.quartier?.isNotEmpty == true ? "${member.quartier} " : "").padRight(40, '.'),
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
                             pw.TextSpan(text: ", Commune Urbaine de Labé"),
@@ -166,14 +179,30 @@ class BaptismCertificatePdfService {
                         ),
                       ),
                       pw.SizedBox(height: 10),
-                      pw.Text(
-                        "Profession : ........................................................",
-                        style: pw.TextStyle(fontSize: 14),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          style: pw.TextStyle(fontSize: 14, lineSpacing: 5),
+                          children: [
+                            pw.TextSpan(text: "Profession : "),
+                            pw.TextSpan(
+                              text: (member.profession?.isNotEmpty == true ? "${member.profession} " : "").padRight(56, '.'),
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                       pw.SizedBox(height: 10),
-                      pw.Text(
-                        "A reçu le baptême le ......../......../................",
-                        style: pw.TextStyle(fontSize: 14),
+                      pw.RichText(
+                        text: pw.TextSpan(
+                          style: pw.TextStyle(fontSize: 14, lineSpacing: 5),
+                          children: [
+                            pw.TextSpan(text: "A reçu le baptême le "),
+                            pw.TextSpan(
+                              text: (member.joinedAt.length >= 10 ? "${member.joinedAt.substring(0, 10).split('-').reversed.join('/')} " : "").padRight(32, '.'),
+                              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

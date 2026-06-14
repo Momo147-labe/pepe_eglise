@@ -363,13 +363,18 @@ class _MouvementsPageState extends State<MouvementsPage> {
                     );
                   }
                   
-                  // Only display these 5 specific roles
+                  // Only display these specific roles (including Commission Locale variants)
                   final targetRoles = [
                     'Président',
+                    'pasteur',
                     'Vice-président',
+                    'vice-president',
                     'Secrétaire',
+                    'secretaire',
                     'Chargé des affaires sociales',
-                    'Trésorière'
+                    'charger aux affaires sociales',
+                    'Trésorière',
+                    'Le trésorier'
                   ];
                   
                   var filteredMembers = members

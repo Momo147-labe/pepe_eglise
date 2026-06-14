@@ -55,7 +55,6 @@ class MemberModel {
       'image_path': imagePath,
       'quartier': quartier,
       'birth_place': birthPlace,
-      'poste': poste,
       'pere': pere,
       'mere': mere,
       'profession': profession,

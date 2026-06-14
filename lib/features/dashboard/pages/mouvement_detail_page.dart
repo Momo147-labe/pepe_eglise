@@ -109,14 +109,48 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
     );
   }
 
+  Color _getRoleColor(String? role) {
+    if (role == null) return Colors.grey;
+    final r = role.toLowerCase();
+    if (r.contains('président') || r.contains('president') || r.contains('pasteur')) {
+      return Colors.amber.shade700;
+    }
+    if (r.contains('secrétaire') || r.contains('secretaire')) {
+      return Colors.blue.shade600;
+    }
+    if (r.contains('trésorièr') || r.contains('tresorier')) {
+      return Colors.indigo.shade500;
+    }
+    if (r.contains('social')) {
+      return Colors.teal.shade600;
+    }
+    if (r == 'membre') {
+      return Colors.grey.shade600;
+    }
+    return AppColors.primaryOrange;
+  }
+
   Widget _buildHeaderCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.borderColor),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryOrange.withValues(alpha: 0.8),
+            AppColors.primaryOrange.withValues(alpha: 0.6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,43 +158,69 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
           Row(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: context.surfaceHighlightColor,
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                 ),
-                child: Icon(Icons.hub_rounded, color: AppColors.primaryOrange, size: 32),
+                child: const Icon(Icons.hub_rounded, color: Colors.white, size: 36),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 24),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       widget.mouvement.nom,
-                      style: TextStyle(
-                        color: context.textColor,
-                        fontSize: 24,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Créé le : ${widget.mouvement.dateCreation != null ? widget.mouvement.dateCreation!.split('T')[0] : 'N/A'}",
-                      style: TextStyle(color: context.subtitleColor, fontSize: 13),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Responsable : ${widget.mouvement.responsableName ?? 'Non assigné'}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Divider(color: context.dividerColor, height: 1),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             widget.mouvement.description ?? "Aucune description fournie.",
-            style: TextStyle(color: context.textColor, fontSize: 15, height: 1.5),
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Créé le : ${widget.mouvement.dateCreation != null ? widget.mouvement.dateCreation!.split('T')[0] : 'N/A'}",
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
           ),
         ],
       ),
@@ -171,22 +231,26 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
     return Row(
       children: [
         Expanded(
-          child: StatCard(
-            title: "Membres Actifs",
-            value: _currentMembers.length.toString(),
-            icon: Icons.people_rounded,
-            bgColor: Colors.blue,
+          child: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: StatCard(
+              title: "Total Membres Actifs",
+              value: _currentMembers.length.toString(),
+              icon: Icons.groups_rounded,
+              bgColor: Colors.blue,
+            ),
           ),
         ),
         const SizedBox(width: 24),
-        Expanded(
-          child: StatCard(
-            title: "Responsable",
-            value: widget.mouvement.responsableName ?? "Non assigné",
-            icon: Icons.person_rounded,
-            bgColor: Colors.orange,
-          ),
-        ),
+        const Spacer(),
       ],
     );
   }
@@ -201,11 +265,12 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
             Text(
               "Membres et Rôles",
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: context.textColor,
               ),
             ),
+            const SizedBox(height: 4),
             Text(
               "Affectez des membres et gérez leurs postes",
               style: TextStyle(fontSize: 14, color: context.subtitleColor),
@@ -232,29 +297,25 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
               icon: const Icon(Icons.print_rounded, size: 18),
               label: const Text("Imprimer les Cartes"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryOrange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                backgroundColor: context.surfaceHighlightColor,
+                foregroundColor: AppColors.primaryOrange,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                shape: const StadiumBorder(),
                 elevation: 0,
               ),
             ),
             const SizedBox(width: 16),
             ElevatedButton.icon(
               onPressed: _showAddMemberDialog,
-              icon: const Icon(Icons.add_rounded, size: 18),
+              icon: const Icon(Icons.add_rounded, size: 20),
               label: const Text("Affecter un Membre"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: context.surfaceColor,
-                foregroundColor: context.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: context.borderColor),
-                ),
-                elevation: 0,
+                backgroundColor: AppColors.primaryOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: const StadiumBorder(),
+                elevation: 4,
+                shadowColor: AppColors.primaryOrange.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -265,11 +326,18 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
 
   Widget _buildSearchBar() {
     return Container(
-      width: 250,
+      width: 280,
       decoration: BoxDecoration(
         color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(30),
         border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         onChanged: (value) {
@@ -279,11 +347,14 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
         decoration: InputDecoration(
           hintText: "Rechercher un membre...",
           hintStyle: TextStyle(color: context.iconColor, fontSize: 14),
-          prefixIcon: Icon(Icons.search, color: context.iconColor, size: 20),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12.0, right: 8.0),
+            child: Icon(Icons.search, color: context.iconColor, size: 20),
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
+            horizontal: 16,
+            vertical: 14,
           ),
         ),
       ),
@@ -295,26 +366,48 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
     if (members.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.symmetric(vertical: 60),
         decoration: BoxDecoration(
           color: context.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: context.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Icon(
-              Icons.people_outline_rounded,
-              size: 48,
-              color: context.iconColor.withOpacity(0.4),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.people_outline_rounded,
+                size: 64,
+                color: AppColors.primaryOrange.withValues(alpha: 0.8),
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Text(
-              "Aucun membre dans ce groupe",
+              "Ce groupe est vide",
+              style: TextStyle(
+                color: context.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Ajoutez-y son premier membre pour commencer !",
               style: TextStyle(
                 color: context.subtitleColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontSize: 15,
               ),
             ),
           ],
@@ -322,50 +415,72 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.borderColor),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: members.length,
-        separatorBuilder: (context, index) => Divider(color: context.dividerColor, height: 1),
-        itemBuilder: (context, index) {
-          final member = members[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: CircleAvatar(
-              backgroundColor: context.surfaceHighlightColor,
-              child: Text(
-                member.fullName.substring(0, 1).toUpperCase(),
-                style: TextStyle(color: context.textColor, fontWeight: FontWeight.bold),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: members.length,
+      itemBuilder: (context, index) {
+        final member = members[index];
+        final roleColor = _getRoleColor(member.poste);
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.borderColor.withValues(alpha: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            leading: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: roleColor.withValues(alpha: 0.5), width: 2),
+              ),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: roleColor.withValues(alpha: 0.1),
+                child: Text(
+                  member.fullName.substring(0, 1).toUpperCase(),
+                  style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
               ),
             ),
             title: Text(
               member.fullName,
-              style: TextStyle(color: context.textColor, fontWeight: FontWeight.bold),
+              style: TextStyle(color: context.textColor, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 4),
-                Text(member.phone, style: TextStyle(color: context.subtitleColor, fontSize: 13)),
                 const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.phone_rounded, size: 14, color: context.subtitleColor),
+                    const SizedBox(width: 6),
+                    Text(member.phone, style: TextStyle(color: context.subtitleColor, fontSize: 13)),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryOrange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: roleColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: roleColor.withValues(alpha: 0.2)),
                   ),
                   child: Text(
                     member.poste ?? "Membre",
-                    style: const TextStyle(
-                      color: AppColors.primaryOrange,
+                    style: TextStyle(
+                      color: roleColor,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -374,21 +489,34 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent),
-                  onPressed: () => _showEditRoleDialog(member),
-                  tooltip: "Modifier le poste",
+                Container(
+                  decoration: BoxDecoration(
+                    color: context.surfaceHighlightColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
+                    onPressed: () => _showEditRoleDialog(member),
+                    tooltip: "Modifier le poste",
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent),
-                  onPressed: () => _removeMember(member),
-                  tooltip: "Retirer du groupe",
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 20),
+                    onPressed: () => _removeMember(member),
+                    tooltip: "Retirer du groupe",
+                  ),
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -401,14 +529,24 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
     String selectedRole = 'Membre';
     final formKey = GlobalKey<FormState>();
     
-    final roles = [
-      'Président',
-      'Vice-président',
-      'Secrétaire',
-      'Chargé des affaires sociales',
-      'Trésorière',
-      'Membre'
-    ];
+    final isCommissionLocale = widget.mouvement.nom == 'Commission Locale';
+    final roles = isCommissionLocale 
+      ? [
+          'pasteur',
+          'vice-president',
+          'secretaire',
+          'charger aux affaires sociales',
+          'Le trésorier',
+          'Membre'
+        ]
+      : [
+          'Président',
+          'Vice-président',
+          'Secrétaire',
+          'Chargé des affaires sociales',
+          'Trésorière',
+          'Membre'
+        ];
 
     showDialog(
       context: context,
@@ -508,14 +646,24 @@ class _MouvementDetailPageState extends State<MouvementDetailPage> {
   }
 
   void _showEditRoleDialog(MemberModel member) {
-    final roles = [
-      'Président',
-      'Vice-président',
-      'Secrétaire',
-      'Chargé des affaires sociales',
-      'Trésorière',
-      'Membre'
-    ];
+    final isCommissionLocale = widget.mouvement.nom == 'Commission Locale';
+    final roles = isCommissionLocale 
+      ? [
+          'pasteur',
+          'vice-president',
+          'secretaire',
+          'charger aux affaires sociales',
+          'Le trésorier',
+          'Membre'
+        ]
+      : [
+          'Président',
+          'Vice-président',
+          'Secrétaire',
+          'Chargé des affaires sociales',
+          'Trésorière',
+          'Membre'
+        ];
     
     String selectedRole = roles.contains(member.poste) ? member.poste! : 'Membre';
     final formKey = GlobalKey<FormState>();

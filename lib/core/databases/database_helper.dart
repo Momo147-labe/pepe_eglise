@@ -22,7 +22,7 @@ import 'daos/attendance_dao.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
-  static const int _databaseVersion = 13;
+  static const int _databaseVersion = 14;
   static Database? _database;
   // Prevents concurrent openDatabase calls (race condition fix)
   static Completer<Database>? _dbCompleter;
@@ -145,6 +145,14 @@ class DatabaseHelper {
         await db.execute('ALTER TABLE members ADD COLUMN pere TEXT');
         await db.execute('ALTER TABLE members ADD COLUMN mere TEXT');
         await db.execute('ALTER TABLE members ADD COLUMN profession TEXT');
+      } catch (e) {
+        // Columns might already exist
+      }
+    }
+    if (oldVersion < 14) {
+      try {
+        await db.execute('ALTER TABLE finances ADD COLUMN payment_method TEXT');
+        await db.execute('ALTER TABLE finances ADD COLUMN category TEXT');
       } catch (e) {
         // Columns might already exist
       }

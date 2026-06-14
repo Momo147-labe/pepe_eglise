@@ -122,6 +122,17 @@ class MemberDetailsDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
+                _buildDetailSection(context, "Informations Personnelles", {
+                  "Téléphone": member.phone,
+                  "Sexe": member.gender == 'M' ? "Masculin" : "Féminin",
+                  "Date de Naissance": member.birthDate != null ? DateFormat('dd/MM/yyyy').format(DateTime.parse(member.birthDate!)) : "-",
+                  "Lieu de Naissance": member.birthPlace?.isNotEmpty == true ? member.birthPlace! : "-",
+                  "Quartier": member.quartier?.isNotEmpty == true ? member.quartier! : "-",
+                  "Profession": member.profession?.isNotEmpty == true ? member.profession! : "-",
+                  "Père": member.pere?.isNotEmpty == true ? member.pere! : "-",
+                  "Mère": member.mere?.isNotEmpty == true ? member.mere! : "-",
+                }),
+                const SizedBox(height: 24),
                 _buildDetailSection(context, "Engagement & Famille", {
                   "Année Adhésion":
                       member.joiningYear?.toString() ??

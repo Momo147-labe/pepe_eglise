@@ -51,4 +51,14 @@ class AttendanceDao {
     if (result.isEmpty || result.first.values.first == null) return 0.0;
     return (result.first.values.first as num).toDouble();
   }
+
+  Future<List<Map<String, dynamic>>> getAttendanceHistoryDetailed(int activityId) async {
+    return await db.rawQuery('''
+      SELECT a.id, a.date, a.status, m.full_name as member_name, m.phone as member_phone
+      FROM ${AttendanceSchema.tableName} a
+      JOIN members m ON a.member_id = m.id
+      WHERE a.activity_id = ?
+      ORDER BY a.date DESC, m.full_name ASC
+    ''', [activityId]);
+  }
 }

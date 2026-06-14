@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:eglise_labe/core/constants/colors.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import 'package:eglise_labe/core/databases/database_helper.dart';
 import 'package:eglise_labe/core/models/finance_model.dart';
 import 'package:eglise_labe/features/dashboard/widgets/transaction_form_dialog.dart';
@@ -30,10 +31,33 @@ class _FinancesPageState extends State<FinancesPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _ledgerKey = GlobalKey();
 
+  String _formatCurrency(dynamic amount) {
+    if (amount == null) return "0";
+    final formatter = NumberFormat('#,##0', 'fr_FR'); // Will output "250 000"
+    if (amount is String) {
+      final parsed = double.tryParse(amount.replaceAll(RegExp(r'[^0-9.]'), ''));
+      if (parsed != null) return formatter.format(parsed).replaceAll(',', ' ');
+      return amount;
+    }
+    return formatter.format(amount).replaceAll(',', ' ');
+  }
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_filterTransactions);
     _loadTransactions();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _filterTransactions() {
+    setState(() {}); // trigger rebuild to filter list based on text
   }
 
   Future<void> _loadTransactions() async {
@@ -93,7 +117,7 @@ class _FinancesPageState extends State<FinancesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                _buildHeroHeader(),
                 const SizedBox(height: 32),
                 _buildStatsGrid(),
                 const SizedBox(height: 32),
@@ -108,92 +132,130 @@ class _FinancesPageState extends State<FinancesPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 24,
-      runSpacing: 24,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Gestion Financière",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: context.textColor,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Suivi des dîmes, offrandes et dépenses de l'église",
-              style: TextStyle(color: context.subtitleColor, fontSize: 16),
-            ),
+  Widget _buildHeroHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primaryOrange,
+            AppColors.primaryOrange.withValues(alpha: 0.8),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            _buildHeaderAction(
-              Icons.download_rounded,
-              "Rapport PDF",
-              () {
-                FinancePdfService().generateFinanceReport(_transactions, "Rapport Financier Complet");
-              },
-            ),
-            _buildSpecialActionButton(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => TransactionFormDialog(
-                  isExpense: false,
-                  onSaved: _loadTransactions,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 24,
+        runSpacing: 24,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 36),
               ),
-              icon: Icons.add_circle_outline_rounded,
-              label: "Nouvelle Entrée",
-              color: Colors.green,
-            ),
-            _buildSpecialActionButton(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => TransactionFormDialog(
-                  isExpense: true,
-                  onSaved: _loadTransactions,
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Gestion Financière",
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Suivi des dîmes, offrandes et dépenses de l'église",
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 16),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 16,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _buildHeaderAction(
+                Icons.download_rounded,
+                "Rapport PDF",
+                () {
+                  FinancePdfService().generateFinanceReport(_transactions, "Rapport Financier Complet");
+                },
+                isOutlined: true,
+              ),
+              _buildSpecialActionButton(
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => TransactionFormDialog(
+                    isExpense: false,
+                    onSaved: _loadTransactions,
+                  ),
                 ),
+                icon: Icons.add_circle_outline_rounded,
+                label: "Nouvelle Entrée",
+                color: Colors.green,
               ),
-              icon: Icons.remove_circle_outline_rounded,
-              label: "Nouvelle Dépense",
-              color: Colors.redAccent,
-            ),
-          ],
-        ),
-      ],
+              _buildSpecialActionButton(
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => TransactionFormDialog(
+                    isExpense: true,
+                    onSaved: _loadTransactions,
+                  ),
+                ),
+                icon: Icons.remove_circle_outline_rounded,
+                label: "Nouvelle Dépense",
+                color: Colors.redAccent,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildHeaderAction(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildHeaderAction(IconData icon, String label, VoidCallback onTap, {bool isOutlined = false}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(30),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: context.borderColor),
-          borderRadius: BorderRadius.circular(12),
+          color: isOutlined ? Colors.transparent : Colors.white,
+          border: isOutlined ? Border.all(color: Colors.white.withValues(alpha: 0.5)) : null,
+          borderRadius: BorderRadius.circular(30),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: context.iconColor),
+            Icon(icon, size: 20, color: isOutlined ? Colors.white : AppColors.primaryOrange),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: context.iconColor,
-                fontWeight: FontWeight.w600,
+                color: isOutlined ? Colors.white : AppColors.primaryOrange,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -215,9 +277,10 @@ class _FinancesPageState extends State<FinancesPage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        shape: const StadiumBorder(),
+        elevation: 6,
+        shadowColor: color.withValues(alpha: 0.4),
       ),
     );
   }
@@ -239,36 +302,36 @@ class _FinancesPageState extends State<FinancesPage> {
           crossAxisCount: crossAxisCount,
           crossAxisSpacing: 24,
           mainAxisSpacing: 24,
-          childAspectRatio: 2.2, // Adjust to keep cards readable
+          childAspectRatio: 2.0,
           children: [
-            _buildFinancialStat(
-              "Total Entrées",
-              _isLoading ? "..." : "${_totalIncome.toInt()} GNF",
-              Icons.arrow_upward_rounded,
-              Colors.green,
-            ),
-            _buildFinancialStat(
-              "Total Sorties",
-              _isLoading ? "..." : "${_totalExpenses.toInt()} GNF",
-              Icons.arrow_downward_rounded,
-              Colors.red,
-            ),
-            _buildFinancialStat(
+            _buildWalletCard(
               "Solde Actuel",
-              _isLoading ? "..." : "${balance.toInt()} GNF",
+              _isLoading ? "..." : "${_formatCurrency(balance)} GNF",
               Icons.account_balance_wallet_rounded,
               Colors.blue,
             ),
-            _buildFinancialStat(
-              "Entrées (Mois)",
-              _isLoading ? "..." : "+ ${_monthlyIncome.toInt()} GNF",
+            _buildWalletCard(
+              "Total Entrées",
+              _isLoading ? "..." : "${_formatCurrency(_totalIncome)} GNF",
               Icons.trending_up_rounded,
+              Colors.green,
+            ),
+            _buildWalletCard(
+              "Total Sorties",
+              _isLoading ? "..." : "${_formatCurrency(_totalExpenses)} GNF",
+              Icons.trending_down_rounded,
+              Colors.redAccent,
+            ),
+            _buildWalletCard(
+              "Entrées (Mois)",
+              _isLoading ? "..." : "+ ${_formatCurrency(_monthlyIncome)} GNF",
+              Icons.monetization_on_rounded,
               Colors.teal,
             ),
-            _buildFinancialStat(
+            _buildWalletCard(
               "Sorties (Mois)",
-              _isLoading ? "..." : "- ${_monthlyExpenses.toInt()} GNF",
-              Icons.trending_down_rounded,
+              _isLoading ? "..." : "- ${_formatCurrency(_monthlyExpenses)} GNF",
+              Icons.money_off_rounded,
               Colors.orange,
             ),
           ],
@@ -277,50 +340,55 @@ class _FinancesPageState extends State<FinancesPage> {
     );
   }
 
-  Widget _buildFinancialStat(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildWalletCard(String title, String value, IconData icon, Color accentColor) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.borderColor),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 20),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
                   title,
-                  style: TextStyle(color: context.subtitleColor, fontSize: 12),
+                  style: TextStyle(color: context.subtitleColor, fontSize: 12, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: context.textColor,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-              ],
+                child: Icon(icon, color: accentColor, size: 18),
+              ),
+            ],
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: context.textColor,
+              ),
             ),
           ),
         ],
@@ -345,8 +413,6 @@ class _FinancesPageState extends State<FinancesPage> {
       if (m['income'] > maxY) maxY = m['income'] as double;
       if (m['expense'] > maxY) maxY = m['expense'] as double;
     }
-    // Scale maxY to millions for the axis, or keep it raw?
-    // The current UI shows "5M", so I'll scale by 1,000,000.
     final displayMaxY = (maxY / 1000000).ceil().toDouble() + 1;
 
     return Container(
@@ -356,6 +422,13 @@ class _FinancesPageState extends State<FinancesPage> {
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,11 +463,26 @@ class _FinancesPageState extends State<FinancesPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : LineChart(
                     LineChartData(
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipItems: (touchedSpots) {
+                            return touchedSpots.map((spot) {
+                              return LineTooltipItem(
+                                '${spot.y.toStringAsFixed(1)}M GNF',
+                                TextStyle(
+                                  color: spot.barIndex == 0 ? Colors.green : Colors.redAccent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
                         getDrawingHorizontalLine: (value) => FlLine(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           strokeWidth: 1,
                         ),
                       ),
@@ -415,18 +503,8 @@ class _FinancesPageState extends State<FinancesPage> {
                               final int idx = value.toInt();
                               if (idx >= 0 && idx < _monthlyTrend.length) {
                                 final months = [
-                                  "Jan",
-                                  "Fév",
-                                  "Mar",
-                                  "Avr",
-                                  "Mai",
-                                  "Juin",
-                                  "Juil",
-                                  "Août",
-                                  "Sep",
-                                  "Oct",
-                                  "Nov",
-                                  "Déc",
+                                  "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+                                  "Juil", "Août", "Sep", "Oct", "Nov", "Déc"
                                 ];
                                 final monthNum = _monthlyTrend[idx]['month'];
                                 return Text(
@@ -478,7 +556,11 @@ class _FinancesPageState extends State<FinancesPage> {
                           dotData: const FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: Colors.green.withOpacity(0.05),
+                            gradient: LinearGradient(
+                              colors: [Colors.green.withValues(alpha: 0.3), Colors.transparent],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
                           ),
                         ),
                         LineChartBarData(
@@ -495,7 +577,11 @@ class _FinancesPageState extends State<FinancesPage> {
                           dotData: const FlDotData(show: false),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: Colors.redAccent.withOpacity(0.05),
+                            gradient: LinearGradient(
+                              colors: [Colors.redAccent.withValues(alpha: 0.3), Colors.transparent],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
                           ),
                         ),
                       ],
@@ -509,14 +595,14 @@ class _FinancesPageState extends State<FinancesPage> {
 
   Widget _buildFinancialAlerts() {
     final balance = _totalIncome - _totalExpenses;
-    final bool isLowBalance = balance < 1000000; // Alerte si moins de 1M GNF
+    final bool isLowBalance = balance < 1000000; 
 
     return Column(
       children: [
         if (isLowBalance)
           _buildAlertCard(
             "⚠️ Solde Faible",
-            "Le solde global de l'église est actuellement de ${balance.toInt()} GNF.",
+            "Le solde global de l'église est actuellement de ${_formatCurrency(balance)} GNF.",
             Colors.orange,
           ),
         const SizedBox(height: 16),
@@ -537,9 +623,9 @@ class _FinancesPageState extends State<FinancesPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,6 +651,13 @@ class _FinancesPageState extends State<FinancesPage> {
       decoration: BoxDecoration(
         color: AppColors.backgroundDark,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,6 +747,13 @@ class _FinancesPageState extends State<FinancesPage> {
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: context.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -679,7 +779,7 @@ class _FinancesPageState extends State<FinancesPage> {
             ),
           ),
           const Divider(height: 1),
-          _buildTransactionsTable(),
+          _buildTransactionList(),
         ],
       ),
     );
@@ -697,7 +797,7 @@ class _FinancesPageState extends State<FinancesPage> {
         child: TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: "Recherche...",
+            hintText: "Rechercher une transaction...",
             hintStyle: TextStyle(color: context.iconColor, fontSize: 14),
             border: InputBorder.none,
             icon: Icon(Icons.search, size: 20, color: context.iconColor),
@@ -707,180 +807,187 @@ class _FinancesPageState extends State<FinancesPage> {
     );
   }
 
-  Widget _buildTransactionsTable() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_transactions.isEmpty)
-      return const Center(child: Text("Aucune transaction enregistrée."));
+  Widget _buildTransactionList() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(48.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
+    final query = _searchController.text.toLowerCase();
+    final filteredTransactions = _transactions.where((t) {
+      return t.entity.toLowerCase().contains(query) ||
+             t.description.toLowerCase().contains(query) ||
+             t.type.toLowerCase().contains(query);
+    }).toList();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowHeight: 60,
-        dataRowMaxHeight: 80,
-        horizontalMargin: 24,
-        columns: const [
-          DataColumn(label: Text("DATE")),
-          DataColumn(label: Text("MEMBRE / ENTITÉ")),
-          DataColumn(label: Text("MONTANT")),
-          DataColumn(label: Text("TYPE")),
-          DataColumn(label: Text("DESCRIPTION")),
-          DataColumn(label: Text("ACTIONS")),
-        ],
-        rows: _transactions.map((t) {
-          final typeColor = t.type == 'Dépense'
-              ? Colors.redAccent
-              : t.type == 'Dîme'
-              ? Colors.green
-              : t.type == 'Offrande'
-              ? Colors.teal
-              : t.type == 'Don'
-              ? Colors.amber
-              : Colors.blue;
-          return _buildTransactionRow(
-            t.id,
-            t.date,
-            t.entity,
-            t.amount,
-            t.type,
-            t.description,
-            typeColor,
-          );
-        }).toList(),
+    if (filteredTransactions.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(48.0),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.receipt_long_rounded, size: 48, color: context.iconColor.withValues(alpha: 0.5)),
+              const SizedBox(height: 16),
+              Text(
+                "Aucune transaction trouvée.",
+                style: TextStyle(color: context.subtitleColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(24),
+      itemCount: filteredTransactions.length,
+      itemBuilder: (context, index) {
+        return _buildTransactionCard(filteredTransactions[index]);
+      },
+    );
+  }
+
+  Widget _buildTransactionCard(FinanceModel t) {
+    final bool isExpense = t.type == 'Dépense';
+    final Color typeColor = isExpense
+        ? Colors.redAccent
+        : t.type == 'Dîme'
+        ? Colors.green
+        : t.type == 'Offrande'
+        ? Colors.teal
+        : t.type == 'Don'
+        ? Colors.amber
+        : Colors.blue;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.borderColor.withValues(alpha: 0.5)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: typeColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isExpense ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+            color: typeColor,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          t.entity,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: context.textColor,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              "${t.date} • ${t.paymentMethod ?? 'Non spécifié'}",
+              style: TextStyle(color: context.subtitleColor, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: typeColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Text(
+                    t.type,
+                    style: TextStyle(
+                      color: typeColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (t.category != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: context.surfaceHighlightColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.borderColor),
+                    ),
+                    child: Text(
+                      t.category!,
+                      style: TextStyle(
+                        color: context.subtitleColor,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "${isExpense ? '-' : '+'}${_formatCurrency(t.amount)} GNF",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: isExpense ? Colors.redAccent : Colors.green,
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: context.surfaceColor,
+                    title: Text("Supprimer", style: TextStyle(color: context.textColor)),
+                    content: Text("Voulez-vous supprimer cette transaction ?", style: TextStyle(color: context.subtitleColor)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Annuler")),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        child: const Text("Supprimer"),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  final dao = await DatabaseHelper().financeDao;
+                  if (t.id != null) {
+                    await dao.deleteTransaction(t.id!);
+                    _loadTransactions();
+                  }
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withValues(alpha: 0.5)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-
-  DataRow _buildTransactionRow(
-    int? id,
-    String date,
-    String entity,
-    String amount,
-    String type,
-    String desc,
-    Color typeColor,
-  ) {
-    return DataRow(
-      cells: [
-        DataCell(
-          Text(
-            date,
-            style: TextStyle(color: context.subtitleColor, fontSize: 13),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: context.borderColor,
-                child: Text(
-                  entity[0],
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: context.textColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  entity,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: context.textColor,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-        DataCell(
-          Text(
-            amount,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: typeColor == Colors.redAccent
-                  ? Colors.redAccent
-                  : context.textColor,
-            ),
-          ),
-        ),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: typeColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              type,
-              style: TextStyle(
-                color: typeColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        DataCell(
-          SizedBox(
-            width: 200,
-            child: Text(
-              desc,
-              style: TextStyle(color: context.subtitleColor, fontSize: 13),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-        DataCell(
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.print_rounded, size: 18),
-                onPressed: () {
-                  // Print individual receipt? Unnecessary for now.
-                },
-                color: Colors.blueAccent.withOpacity(0.5),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                onPressed: () async {
-                  if (id != null) {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        backgroundColor: context.surfaceColor,
-                        title: Text("Supprimer", style: TextStyle(color: context.textColor)),
-                        content: Text("Voulez-vous supprimer cette transaction ?", style: TextStyle(color: context.subtitleColor)),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Annuler")),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            child: const Text("Supprimer"),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      final dao = await DatabaseHelper().financeDao;
-                      await dao.deleteTransaction(id);
-                      _loadTransactions();
-                    }
-                  }
-                },
-                color: Colors.redAccent.withOpacity(0.4),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-
 }
 
 class _Indicator extends StatelessWidget {

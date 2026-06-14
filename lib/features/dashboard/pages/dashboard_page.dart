@@ -560,14 +560,13 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildEventCard(String month, String day, String title, String time) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundDark.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundDark.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
           children: [
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -606,7 +605,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     time,
                     style: TextStyle(
                       color: context.subtitleColor,
-                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -614,8 +612,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   String _getFormattedDate() {

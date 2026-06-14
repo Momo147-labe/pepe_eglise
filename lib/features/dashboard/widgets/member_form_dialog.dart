@@ -452,6 +452,38 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormTextField(
+                          "Profession",
+                          "Ex: Enseignant",
+                          professionCtrl,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFormTextField(
+                          "Nom du Père (Optionnel)",
+                          "Ex: Jean",
+                          pereCtrl,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildFormTextField(
+                          "Nom de la Mère (Optionnel)",
+                          "Ex: Marie",
+                          mereCtrl,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
 
