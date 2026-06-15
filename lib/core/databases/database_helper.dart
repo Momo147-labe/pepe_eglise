@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -37,6 +39,7 @@ class DatabaseHelper {
     _dbCompleter = Completer<Database>();
     try {
       _database = await _initDatabase();
+      await _checkAndSeedCommissionLocale(_database!);
       _dbCompleter!.complete(_database!);
     } catch (e) {
       _dbCompleter!.completeError(e);
@@ -185,6 +188,50 @@ class DatabaseHelper {
       } catch (e) {
         // Ignored
       }
+    }
+  }
+
+  Future<void> _checkAndSeedCommissionLocale(Database db) async {
+    try {
+      final result = await db.query(MouvementSchema.tableName, where: 'nom = ?', whereArgs: ['Commission Locale']);
+      if (result.isEmpty) return;
+      final mouvementId = result.first['id'] as int;
+
+      final countResult = await db.rawQuery('SELECT COUNT(*) FROM ${MouvementSchema.memberRelationTable} WHERE mouvement_id = ?', [mouvementId]);
+      final count = Sqflite.firstIntValue(countResult) ?? 0;
+
+      if (count == 0) {
+        final String jsonString = await rootBundle.loadString('mouvement_local.json');
+        final Map<String, dynamic> data = jsonDecode(jsonString);
+        final List<dynamic> membres = data['mouvement_local'] ?? [];
+
+        for (var m in membres) {
+          final memberId = await db.insert(MemberSchema.tableName, {
+            'full_name': '${m["nom"]} ${m["prenom"]}',
+            'phone': m['phone'] ?? '',
+            'gender': (m['sexe'] == 'homme') ? 'M' : 'F',
+            'group_name': 'Commission Locale',
+            'marital_status': m['situation matriomniale'] ?? '',
+            'member_status': m['status'] == 'active' ? 'Actif' : 'Inactif',
+            'joined_at': (m['date d\'adhésion'] == null || m['date d\'adhésion'].toString().isEmpty) ? DateTime.now().toIso8601String() : m['date d\'adhésion'],
+            'birth_date': m['date_naissance'] ?? '',
+            'birth_place': m['lieu_naissance'] ?? '',
+            'quartier': m['quartier'] ?? '',
+            'profession': m['profession'] ?? '',
+            'pere': m['pere'] ?? '',
+            'mere': m['mere'] ?? '',
+            'image_path': m['profile'] ?? '',
+          });
+
+          await db.insert(MouvementSchema.memberRelationTable, {
+            'membre_id': memberId,
+            'mouvement_id': mouvementId,
+            'poste': m['poste'] ?? 'Membre',
+          });
+        }
+      }
+    } catch (e) {
+      // Ignored
     }
   }
 

@@ -125,7 +125,7 @@ class MemberDetailsDialog extends StatelessWidget {
                 _buildDetailSection(context, "Informations Personnelles", {
                   "Téléphone": member.phone,
                   "Sexe": member.gender == 'M' ? "Masculin" : "Féminin",
-                  "Date de Naissance": member.birthDate != null ? DateFormat('dd/MM/yyyy').format(DateTime.parse(member.birthDate!)) : "-",
+                  "Date de Naissance": (member.birthDate != null && member.birthDate!.isNotEmpty) ? DateFormat('dd/MM/yyyy').format(DateTime.parse(member.birthDate!)) : "-",
                   "Lieu de Naissance": member.birthPlace?.isNotEmpty == true ? member.birthPlace! : "-",
                   "Quartier": member.quartier?.isNotEmpty == true ? member.quartier! : "-",
                   "Profession": member.profession?.isNotEmpty == true ? member.profession! : "-",
@@ -136,8 +136,8 @@ class MemberDetailsDialog extends StatelessWidget {
                 _buildDetailSection(context, "Engagement & Famille", {
                   "Année Adhésion":
                       member.joiningYear?.toString() ??
-                      member.joinedAt.substring(0, 4),
-                  "Date d'inscription": member.joinedAt.substring(0, 10),
+                      (member.joinedAt.length >= 4 ? member.joinedAt.substring(0, 4) : "-"),
+                  "Date d'inscription": (member.joinedAt.length >= 10) ? member.joinedAt.substring(0, 10) : member.joinedAt,
                   "Groupe": member.groupName,
                   "Situation": member.maritalStatus,
                   "Nombre d'enfants": member.childrenCount?.toString() ?? "0",

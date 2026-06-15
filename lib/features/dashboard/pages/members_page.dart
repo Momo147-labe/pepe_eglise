@@ -133,25 +133,33 @@ class _MembersPageState extends State<MembersPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Répertoire des Membres",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: context.textColor,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Répertoire des Membres",
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: context.textColor,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Gérez les fidèles, leurs groupes et leur engagement",
-              style: TextStyle(color: context.subtitleColor, fontSize: 16),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                "Gérez les fidèles, leurs groupes et leur engagement",
+                style: TextStyle(color: context.subtitleColor, fontSize: 16),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-        Row(
+        const SizedBox(width: 16),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 12,
+          runSpacing: 12,
           children: [
             _buildHeaderAction(Icons.print_rounded, "Impression en Groupe", () async {
               final pdfData = await CardPdfService().generateAllMemberCards(_filteredMembers);
@@ -165,11 +173,9 @@ class _MembersPageState extends State<MembersPage> {
                 );
               }
             }),
-            const SizedBox(width: 16),
             _buildHeaderAction(Icons.download_rounded, "Exporter", () {
               CardPdfService().exportMembersList(_filteredMembers);
             }),
-            const SizedBox(width: 16),
             ElevatedButton.icon(
               onPressed: () => _showAddMemberForm(),
               icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),

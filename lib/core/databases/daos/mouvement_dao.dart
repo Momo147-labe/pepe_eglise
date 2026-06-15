@@ -55,7 +55,22 @@ class MouvementDao {
   }
 
   // Member Management in Mouvements
-  Future<int> addMemberToMouvement(int membreId, int mouvementId, {String poste = 'Membre'}) async {
+  Future<int> addMemberToMouvement(int membreId, int mouvementId, {String? poste}) async {
+    String finalPoste = poste ?? 'Membre';
+
+    if (poste == null) {
+      // Fetch existing poste for this member before deleting
+      final existing = await db.query(
+        MouvementSchema.memberRelationTable,
+        columns: ['poste'],
+        where: 'membre_id = ?',
+        whereArgs: [membreId],
+      );
+      if (existing.isNotEmpty) {
+        finalPoste = existing.first['poste'] as String;
+      }
+    }
+
     // Delete any existing relation for this member to ensure they are only in one movement at a time
     await db.delete(
       MouvementSchema.memberRelationTable,
@@ -66,7 +81,7 @@ class MouvementDao {
     return await db.insert(MouvementSchema.memberRelationTable, {
       'membre_id': membreId,
       'mouvement_id': mouvementId,
-      'poste': poste,
+      'poste': finalPoste,
     });
   }
 

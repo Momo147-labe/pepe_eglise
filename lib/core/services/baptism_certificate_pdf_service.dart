@@ -135,7 +135,7 @@ class BaptismCertificatePdfService {
                           children: [
                             pw.TextSpan(text: "Né le "),
                             pw.TextSpan(
-                              text: (member.birthDate != null ? "${member.birthDate!.substring(0, 10)} " : "").padRight(27, '.'),
+                              text: ((member.birthDate != null && member.birthDate!.length >= 10) ? "${member.birthDate!.substring(0, 10)} " : "").padRight(27, '.'),
                               style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                             ),
                             pw.TextSpan(text: " à "),

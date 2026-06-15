@@ -81,13 +81,26 @@ class _ReportingPageState extends State<ReportingPage> {
           const SizedBox(height: 32),
           _buildStatsGrid(),
           const SizedBox(height: 32),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: _buildExecutiveSummary()),
-              const SizedBox(width: 32),
-              Expanded(flex: 2, child: _buildDistributionChart()),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 900) {
+                return Column(
+                  children: [
+                    _buildExecutiveSummary(),
+                    const SizedBox(height: 32),
+                    _buildDistributionChart(),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildExecutiveSummary()),
+                  const SizedBox(width: 32),
+                  Expanded(flex: 2, child: _buildDistributionChart()),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 32),
           _buildFinancialTrendsChart(),
@@ -196,39 +209,62 @@ class _ReportingPageState extends State<ReportingPage> {
   }
 
   Widget _buildStatsGrid() {
-    return Row(
-      children: [
-        _buildStatCard(
-          "Croissance Membres",
-          _isLoading ? "..." : "${_memberGrowth.toStringAsFixed(1)}%",
-          "Année ${DateTime.now().year}",
-          Icons.trending_up_rounded,
-          Colors.green,
-        ),
-        _buildStatCard(
-          "Membres Totaux",
-          _isLoading ? "..." : _totalMembers.toString(),
-          "Inscrits en base",
-          Icons.people_alt_rounded,
-          Colors.blue,
-        ),
-        _buildStatCard(
-          "Santé Financière",
-          _isLoading
-              ? "..."
-              : (_totalIncome > _totalExpenses ? "Excellent" : "Critique"),
-          "Budget vs Réel",
-          Icons.health_and_safety_rounded,
-          (_totalIncome > _totalExpenses ? Colors.green : Colors.red),
-        ),
-        _buildStatCard(
-          "Taux de Complétion",
-          "100%",
-          "Données à jour",
-          Icons.verified_user_rounded,
-          Colors.purple,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        int crossAxisCount = 4;
+        double aspectRatio = 1.2;
+        if (constraints.maxWidth < 600) {
+          crossAxisCount = 1;
+          aspectRatio = 2.0;
+        } else if (constraints.maxWidth < 900) {
+          crossAxisCount = 2;
+          aspectRatio = 1.5;
+        } else if (constraints.maxWidth < 1200) {
+          crossAxisCount = 2;
+          aspectRatio = 1.8;
+        }
+
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 24,
+          mainAxisSpacing: 24,
+          childAspectRatio: aspectRatio,
+          children: [
+            _buildStatCard(
+              "Croissance Membres",
+              _isLoading ? "..." : "${_memberGrowth.toStringAsFixed(1)}%",
+              "Année ${DateTime.now().year}",
+              Icons.trending_up_rounded,
+              Colors.green,
+            ),
+            _buildStatCard(
+              "Membres Totaux",
+              _isLoading ? "..." : _totalMembers.toString(),
+              "Inscrits en base",
+              Icons.people_alt_rounded,
+              Colors.blue,
+            ),
+            _buildStatCard(
+              "Santé Financière",
+              _isLoading
+                  ? "..."
+                  : (_totalIncome > _totalExpenses ? "Excellent" : "Critique"),
+              "Budget vs Réel",
+              Icons.health_and_safety_rounded,
+              (_totalIncome > _totalExpenses ? Colors.green : Colors.red),
+            ),
+            _buildStatCard(
+              "Taux de Complétion",
+              "100%",
+              "Données à jour",
+              Icons.verified_user_rounded,
+              Colors.purple,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -239,8 +275,7 @@ class _ReportingPageState extends State<ReportingPage> {
     IconData icon,
     Color color,
   ) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: context.surfaceColor,
@@ -286,7 +321,6 @@ class _ReportingPageState extends State<ReportingPage> {
               ),
             ),
           ],
-        ),
       ),
     );
   }
@@ -577,14 +611,22 @@ class _ReportingPageState extends State<ReportingPage> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 24),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 3,
-          crossAxisSpacing: 24,
-          mainAxisSpacing: 24,
-          childAspectRatio: 2.5,
-          children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            int crossAxisCount = 3;
+            if (constraints.maxWidth < 600) {
+              crossAxisCount = 1;
+            } else if (constraints.maxWidth < 1000) {
+              crossAxisCount = 2;
+            }
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 24,
+              mainAxisSpacing: 24,
+              childAspectRatio: 2.5,
+              children: [
             _buildReportCard(
               "Bilan Financier Mensuel",
               "Synthèse des entrées et sorties du mois",
@@ -615,7 +657,9 @@ class _ReportingPageState extends State<ReportingPage> {
               "Prévisions des événements à venir",
               Icons.calendar_view_month_rounded,
             ),
-          ],
+              ],
+            );
+          },
         ),
       ],
     );
@@ -651,10 +695,13 @@ class _ReportingPageState extends State<ReportingPage> {
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   sub,
                   style: TextStyle(color: context.subtitleColor, fontSize: 12),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

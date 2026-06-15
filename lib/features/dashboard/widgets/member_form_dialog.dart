@@ -22,6 +22,7 @@ class MemberFormDialog extends StatefulWidget {
 }
 
 class _MemberFormDialogState extends State<MemberFormDialog> {
+  final _formKey = GlobalKey<FormState>();
   final nomCtrl = TextEditingController();
   final prenomCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
@@ -85,8 +86,8 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       }
       phoneCtrl.text = m.phone;
       selectedGender = m.gender;
-      selectedMaritalStatus = m.maritalStatus;
-      selectedStatus = m.memberStatus;
+      selectedMaritalStatus = martialStatusOptions.contains(m.maritalStatus) ? m.maritalStatus : martialStatusOptions.first;
+      selectedStatus = statusOptions.contains(m.memberStatus) ? m.memberStatus : statusOptions.first;
       lieuNaissanceCtrl.text = m.birthPlace ?? '';
       quartierCtrl.text = m.quartier ?? '';
       childrenCountCtrl.text = (m.childrenCount ?? 0).toString();
@@ -187,17 +188,19 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         padding: const EdgeInsets.all(32),
         color: context.surfaceColor,
         child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.member == null ? "Nouveau Membre" : "Modifier Membre",
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryOrange,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.member == null ? "Nouveau Membre" : "Modifier Membre",
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primaryOrange,
+                  ),
                 ),
-              ),
               const SizedBox(height: 16),
               Divider(color: context.borderColor),
               const SizedBox(height: 24),
@@ -290,6 +293,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                                     "Nom",
                                     "Ex: Mansaré",
                                     nomCtrl,
+                                    required: true,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -717,6 +721,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                         "Numéro de Téléphone",
                         "Ex: 620 00 00 00",
                         phoneCtrl,
+                        required: true,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -751,7 +756,8 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                   ),
                 ],
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -841,6 +847,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
   }
 
   Future<void> _saveMember() async {
+    if (!_formKey.currentState!.validate()) return;
     final fullName = "${nomCtrl.text} ${prenomCtrl.text}".trim();
     if (fullName.isEmpty || phoneCtrl.text.isEmpty) return;
 
@@ -921,7 +928,10 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
       // Automatically link the updated member to the newly selected mouvement
       if (!isCustomGroup && _mouvementsMap.containsKey(selectedGroup)) {
         final mouvementId = _mouvementsMap[selectedGroup]!;
-        await mouvementDao.addMemberToMouvement(widget.member!.id!, mouvementId);
+        final String? savedPoste = (widget.member!.groupName == groupName) 
+            ? null 
+            : 'Membre';
+        await mouvementDao.addMemberToMouvement(widget.member!.id!, mouvementId, poste: savedPoste);
       } else {
         // If switched to a custom group, remove them from any existing mouvement
         await database.delete(
@@ -974,6 +984,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
     String hint,
     TextEditingController controller, {
     bool isNumber = false,
+    bool required = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -987,6 +998,14 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
           style: TextStyle(color: context.textColor),
+          validator: required
+              ? (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Ce champ est obligatoire';
+                  }
+                  return null;
+                }
+              : null,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: context.iconColor.withOpacity(0.5)),
@@ -1003,6 +1022,14 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.primaryOrange),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
